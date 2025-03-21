@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">TextDemo</string>
+    <string name="action_settings">Settings</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">First Fragment</string>
+    <string name="second_fragment_label">Second Fragment</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+
+    <string name="lorem_ipsum">
+        Lorem ipsum dolor sit amet,
+    </string>
+    <string name="home_tool_one">导入</string>
+    <string name="home_tool_two">录屏</string>
+    <string name="home_tool_three">停止录屏</string>
+    <string name="play_recording">播放视频</string>
+</resources>
