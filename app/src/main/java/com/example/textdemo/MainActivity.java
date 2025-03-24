@@ -24,6 +24,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Surface;
 import android.view.View;
 
@@ -64,14 +65,15 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
 
 
-    private static final int REQUEST_CODE_READ_EXTERNAL_STORAGE = 1001;
-    private static final int REQUEST_CODE_OPEN_FILE = 1002;
+    private static final int REQUEST_CODE_READ_EXTERNAL_STORAGE = 2001;
+    private static final int REQUEST_CODE_WRITE_EXTERNAL_STORAGE = 2002;
+    private static final int REQUEST_OPEN_FILE_PERMISSIONS = 1001;
 
     private TextItemDao textItemDao;
 
 
-    private static final int REQUEST_CODE_RECORDING = 1000;
-    private static final int REQUEST_PERMISSIONS = 1003;
+    private static final int REQUEST_RECORDING_PERMISSIONS = 1002;
+    private static final int REQUEST_READ_WRITE_PERMISSIONS = 1003;
     private MediaProjectionManager mediaProjectionManager;
     private MediaProjection mediaProjection;
     private MediaCodec mediaCodec;
@@ -94,37 +96,32 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-//        binding = ActivityMainBinding.inflate(getLayoutInflater());
-//        setContentView(binding.getRoot());
-//
-//        setSupportActionBar(binding.toolbar);
-//
-//        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-//        appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
-//        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
-//
-//        binding.fab.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-//                        .setAnchorView(R.id.fab)
-//                        .setAction("Action", null).show();
-//            }
-//        });
-
-
         setContentView(R.layout.activity_main);
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
+        // 请求 READ_EXTERNAL_STORAGE 权限
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                     REQUEST_CODE_READ_EXTERNAL_STORAGE);
+        } else {
+//            Toast.makeText(this, "已允许 READ_EXTERNAL_STORAGE 权限", Toast.LENGTH_SHORT).show();
+        }
+
+        // 请求 WRITE_EXTERNAL_STORAGE 权限
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10 及以上不需要申请 WRITE_EXTERNAL_STORAGE 权限
+                return;
+            }
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    REQUEST_CODE_WRITE_EXTERNAL_STORAGE);
+        } else {
+//            Toast.makeText(this, "已允许 WRITE_EXTERNAL_STORAGE 权限", Toast.LENGTH_SHORT).show();
         }
 
         // 实例化 TextItemDao 对象
         textItemDao = new TextItemDao(this);
-
 
         // 导入文件按钮
         Button btnOpenFile = findViewById(R.id.btn_open_file);
@@ -135,30 +132,15 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
-        // 使用 Environment.getExternalStorageDirectory() 获取外部存储目录
-        File dir = new File(Environment.getExternalStorageDirectory(), "recording");
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-        videoPath = new File(dir, "recording.mp4").getAbsolutePath();
-        Toast.makeText(this,"dir "+videoPath,Toast.LENGTH_LONG).show();
-
         // 录屏按钮
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         findViewById(R.id.btn_start_recording).setOnClickListener(v -> {
             if (checkPermissions()) {
-
-                Intent serviceIntent = new Intent(this, ScreenCaptureService.class);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(serviceIntent);
-                } else {
-                    startService(serviceIntent);
-                }
-
-                startRecording();
-
-                startActivityForResult(mediaProjectionManager.createScreenCaptureIntent(), REQUEST_CODE_RECORDING);
+                // 创建目录
+                createDirectory();
+                // 创建前台服务
+                createIntent();
+                startActivityForResult(mediaProjectionManager.createScreenCaptureIntent(), REQUEST_RECORDING_PERMISSIONS);
             }
         });
 
@@ -166,17 +148,40 @@ public class MainActivity extends AppCompatActivity {
             stopRecording();
         });
 
-
         videoView = findViewById(R.id.videoView);
         findViewById(R.id.play_recording).setOnClickListener(v -> {
             playRecording();
         });
     }
 
+
+    private void createDirectory() {
+        File directory = new File(Environment.getExternalStorageDirectory(), "recording");
+        // directory = new File("/storage/emulated/0/recording");
+        if (!directory.exists()) {
+            boolean success = directory.mkdirs();
+            if (!success) {
+                // 处理创建失败的情况
+                Toast.makeText(MainActivity.this, "创建目录失败", Toast.LENGTH_SHORT).show();
+            }
+        }
+        videoPath = new File(directory, "recording.mp4").getAbsolutePath();
+//        Toast.makeText(MainActivity.this, "权限已授予 videoPath " + videoPath, Toast.LENGTH_SHORT).show();
+    }
+
+    private void createIntent() {
+        Intent serviceIntent = new Intent(this, ScreenCaptureService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_OPEN_FILE && resultCode == RESULT_OK) {
+        if (requestCode == REQUEST_OPEN_FILE_PERMISSIONS && resultCode == RESULT_OK) {
             // 导入文件处理逻辑
             if (data != null) {
                 Uri fileUri = data.getData();
@@ -218,11 +223,10 @@ public class MainActivity extends AppCompatActivity {
             }
 
         }
-        if (requestCode == REQUEST_CODE_RECORDING && resultCode == RESULT_OK) {
+        if (requestCode == REQUEST_RECORDING_PERMISSIONS && resultCode == RESULT_OK) {
             // 录屏处理逻辑
             assert data != null;
             mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
-            startRecording();
         }
     }
 
@@ -232,7 +236,7 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{
                     Manifest.permission.WRITE_EXTERNAL_STORAGE,
                     Manifest.permission.READ_EXTERNAL_STORAGE
-            }, REQUEST_PERMISSIONS);
+            }, REQUEST_READ_WRITE_PERMISSIONS);
             Toast.makeText(this, "can not permissions", Toast.LENGTH_SHORT).show();
             return false;
         }
@@ -245,14 +249,17 @@ public class MainActivity extends AppCompatActivity {
      */
     private void startRecording() {
         try {
-            Toast.makeText(this, "startRecording " + videoPath, Toast.LENGTH_SHORT).show();
-
             // 检查文件是否已存在并删除旧文件
             File videoFile = new File(videoPath);
-            if (videoFile.exists()) {
-                videoFile.delete();
-            }
+//            if (videoFile.exists()) {
+//                videoFile.delete();
+//            }
 
+            // 确保目录存在
+            File dir = videoFile.getParentFile();
+            if (!dir.exists() && !dir.mkdirs()) {
+                throw new IOException("Failed to create directory: " + dir.getAbsolutePath());
+            }
 
             mediaCodec = MediaCodec.createEncoderByType("video/avc");
             MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/avc", WIDTH, HEIGHT);
@@ -275,6 +282,10 @@ public class MainActivity extends AppCompatActivity {
             startMediaCodecThread();
         } catch (IOException e) {
             e.printStackTrace();
+            Toast.makeText(this, "Error starting recording: " + e.getMessage(), Toast.LENGTH_SHORT).show(); // 添加错误提示
+        } catch (IllegalStateException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Illegal state error: " + e.getMessage(), Toast.LENGTH_SHORT).show(); // 添加错误提示
         }
     }
 
@@ -315,6 +326,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
+                    Toast.makeText(MainActivity.this, "Error during recording", Toast.LENGTH_SHORT).show(); // 添加错误提示
                 } finally {
                     release();
                 }
@@ -350,18 +362,15 @@ public class MainActivity extends AppCompatActivity {
         // 更新媒体库
         if (videoPath == null) {
             Toast.makeText(this, "stopRecording is null", Toast.LENGTH_SHORT).show();
-            return;
         } else {
             Toast.makeText(this, "stopRecording " + videoPath, Toast.LENGTH_SHORT).show();
+            sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(videoPath))));
         }
-
-        sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(videoPath))));
 
         // 停止服务
         Intent serviceIntent = new Intent(this, ScreenCaptureService.class);
         stopService(serviceIntent);
     }
-
 
     private void playRecording() {
         Toast.makeText(this, "playRecording video path" + videoPath, Toast.LENGTH_SHORT).show();
@@ -381,7 +390,7 @@ public class MainActivity extends AppCompatActivity {
     private void openFile() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("*/*"); // 设置为所有文件类型
-        startActivityForResult(intent, REQUEST_CODE_OPEN_FILE);
+        startActivityForResult(intent, REQUEST_OPEN_FILE_PERMISSIONS);
     }
 
     /**
@@ -442,15 +451,23 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         // 获取录屏等权限处理逻辑
-        if (requestCode == REQUEST_PERMISSIONS) {
+        if (requestCode == REQUEST_READ_WRITE_PERMISSIONS) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
                 // 权限已授予，可以继续操作
-//                startActivityForResult(mediaProjectionManager.createScreenCaptureIntent(), REQUEST_CODE_RECORDING);
-                startRecording();
-
                 Toast.makeText(this, "Permissions ok ", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(this, "Permissions denied", Toast.LENGTH_SHORT).show();
+            }
+        }
+        // 处理 WRITE_EXTERNAL_STORAGE 权限
+        if (requestCode == REQUEST_CODE_WRITE_EXTERNAL_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 权限已授予，可以继续操作
+                Toast.makeText(this, "WRITE_EXTERNAL_STORAGE permission granted", Toast.LENGTH_SHORT).show();
+                // 重新尝试创建目录
+                createDirectory();
+            } else {
+                Toast.makeText(this, "WRITE_EXTERNAL_STORAGE permission denied", Toast.LENGTH_SHORT).show();
             }
         }
     }
