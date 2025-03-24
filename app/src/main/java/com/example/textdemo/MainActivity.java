@@ -37,6 +37,7 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.example.textdemo.databinding.ActivityMainBinding;
 import com.example.textdemo.service.ScreenCaptureService;
+import com.example.textdemo.tool.FilePickerHelper;
 import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 
@@ -58,22 +59,22 @@ import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 
 public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
 
-
     private static final int REQUEST_CODE_READ_EXTERNAL_STORAGE = 2001;
     private static final int REQUEST_CODE_WRITE_EXTERNAL_STORAGE = 2002;
+    private static final int REQUEST_CODE_READ_WRITE_PERMISSIONS = 2003;
     private static final int REQUEST_OPEN_FILE_PERMISSIONS = 1001;
+    private static final int REQUEST_RECORDING_PERMISSIONS = 1002;
 
     private TextItemDao textItemDao;
 
-
-    private static final int REQUEST_RECORDING_PERMISSIONS = 1002;
-    private static final int REQUEST_READ_WRITE_PERMISSIONS = 1003;
     private MediaProjectionManager mediaProjectionManager;
     private MediaProjection mediaProjection;
     private MediaCodec mediaCodec;
@@ -92,6 +93,11 @@ public class MainActivity extends AppCompatActivity {
     private VideoView videoView;
     private String videoPath;
 
+    // ActivityResultLauncher for screen recording
+    private ActivityResultLauncher<Intent> screenCaptureLauncher;
+
+    private FilePickerHelper filePickerHelper;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -104,60 +110,70 @@ public class MainActivity extends AppCompatActivity {
                     new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                     REQUEST_CODE_READ_EXTERNAL_STORAGE);
         } else {
-//            Toast.makeText(this, "已允许 READ_EXTERNAL_STORAGE 权限", Toast.LENGTH_SHORT).show();
+            // Toast.makeText(this, "已允许 READ_EXTERNAL_STORAGE 权限", Toast.LENGTH_SHORT).show();
         }
 
         // 请求 WRITE_EXTERNAL_STORAGE 权限
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Android 10 及以上不需要申请 WRITE_EXTERNAL_STORAGE 权限
-                return;
-            }
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                     REQUEST_CODE_WRITE_EXTERNAL_STORAGE);
         } else {
-//            Toast.makeText(this, "已允许 WRITE_EXTERNAL_STORAGE 权限", Toast.LENGTH_SHORT).show();
+            // Toast.makeText(this, "已允许 WRITE_EXTERNAL_STORAGE 权限", Toast.LENGTH_SHORT).show();
         }
 
         // 实例化 TextItemDao 对象
         textItemDao = new TextItemDao(this);
 
+        // 创建 FilePickerHelper 实例
+        filePickerHelper = new FilePickerHelper(this, textItemDao);
+
+
+        // 初始化视频播放控件
+        videoView = findViewById(R.id.videoView);
+
         // 导入文件按钮
-        Button btnOpenFile = findViewById(R.id.btn_open_file);
-        btnOpenFile.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openFile();
-            }
-        });
+        findViewById(R.id.btn_open_file).setOnClickListener(v -> filePickerHelper.openFile());
 
         // 录屏按钮
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         findViewById(R.id.btn_start_recording).setOnClickListener(v -> {
             if (checkPermissions()) {
-                // 创建目录
-                createDirectory();
                 // 创建前台服务
                 createIntent();
-                startActivityForResult(mediaProjectionManager.createScreenCaptureIntent(), REQUEST_RECORDING_PERMISSIONS);
+                // 启动屏幕录制
+                startScreenCapture();
             }
         });
 
+        // 停止录屏按钮
         findViewById(R.id.btn_stop_recording).setOnClickListener(v -> {
             stopRecording();
         });
 
-        videoView = findViewById(R.id.videoView);
+        // 播放录屏按钮
         findViewById(R.id.play_recording).setOnClickListener(v -> {
             playRecording();
         });
-    }
 
+        // 注册 ActivityResultLauncher for screen capture
+        screenCaptureLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK) {
+                        Intent data = result.getData();
+                        if (data != null) {
+                            // 录屏处理逻辑
+                            mediaProjection = mediaProjectionManager.getMediaProjection(result.getResultCode(), data);
+                            startRecording();
+                        }
+                    }
+                }
+        );
+    }
 
     private void createDirectory() {
         File directory = new File(Environment.getExternalStorageDirectory(), "recording");
-        // directory = new File("/storage/emulated/0/recording");
         if (!directory.exists()) {
             boolean success = directory.mkdirs();
             if (!success) {
@@ -171,63 +187,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void createIntent() {
         Intent serviceIntent = new Intent(this, ScreenCaptureService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent);
-        } else {
-            startService(serviceIntent);
-        }
+        startForegroundService(serviceIntent);
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_OPEN_FILE_PERMISSIONS && resultCode == RESULT_OK) {
-            // 导入文件处理逻辑
-            if (data != null) {
-                Uri fileUri = data.getData();
-                if (fileUri != null) {
-                    // 读取文件内容
-                    String jsonString = readFile(fileUri);
-                    if (jsonString != null) {
-                        // 打印 JSON 字符串以验证内容
-                        System.out.println("JSON String: " + jsonString);
-                        // 解析 JSON 字符串为对象列表
-                        List<TextItem> itemList = parseJson(jsonString);
-                        if (itemList != null) {
-                            Toast.makeText(this, "File allItems: ", Toast.LENGTH_LONG).show();
-                            // 插入数据到数据库
-                            for (TextItem item : itemList) {
-                                long id = TextItemDao.insertItem(item);
-
-                                if (id != -1) {
-                                    Toast.makeText(this, "Data inserted successfully", Toast.LENGTH_SHORT).show();
-                                } else {
-                                    Toast.makeText(this, "Failed to parse JSON", Toast.LENGTH_SHORT).show();
-                                }
-                            }
-                            // 查询并打印所有数据
-                            List<TextItem> allItems = TextItemDao.getAllItems();
-                            for (TextItem item : allItems) {
-                                System.out.println(item);
-                            }
-
-                            // 处理文件内容
-                            Toast.makeText(this, "File allItems: " + allItems, Toast.LENGTH_LONG).show();
-                        } else {
-                            Toast.makeText(this, "Failed to parse JSON", Toast.LENGTH_SHORT).show();
-                        }
-                    } else {
-                        Toast.makeText(this, "Failed to read file", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            }
-
-        }
-        if (requestCode == REQUEST_RECORDING_PERMISSIONS && resultCode == RESULT_OK) {
-            // 录屏处理逻辑
-            assert data != null;
-            mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
-        }
+    private void startScreenCapture() {
+        Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
+        screenCaptureLauncher.launch(captureIntent);
     }
 
     private boolean checkPermissions() {
@@ -236,7 +201,7 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{
                     Manifest.permission.WRITE_EXTERNAL_STORAGE,
                     Manifest.permission.READ_EXTERNAL_STORAGE
-            }, REQUEST_READ_WRITE_PERMISSIONS);
+            }, REQUEST_CODE_READ_WRITE_PERMISSIONS);
             Toast.makeText(this, "can not permissions", Toast.LENGTH_SHORT).show();
             return false;
         }
@@ -256,10 +221,10 @@ public class MainActivity extends AppCompatActivity {
 //            }
 
             // 确保目录存在
-            File dir = videoFile.getParentFile();
-            if (!dir.exists() && !dir.mkdirs()) {
-                throw new IOException("Failed to create directory: " + dir.getAbsolutePath());
-            }
+//            File dir = videoFile.getParentFile();
+//            if (!dir.exists() && !dir.mkdirs()) {
+//                throw new IOException("Failed to create directory: " + dir.getAbsolutePath());
+//            }
 
             mediaCodec = MediaCodec.createEncoderByType("video/avc");
             MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/avc", WIDTH, HEIGHT);
@@ -381,62 +346,6 @@ public class MainActivity extends AppCompatActivity {
 
         videoView.setVideoPath(videoPath);
         videoView.start();
-
-    }
-
-    /**
-     * 打开文件夹读取文件
-     */
-    private void openFile() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("*/*"); // 设置为所有文件类型
-        startActivityForResult(intent, REQUEST_OPEN_FILE_PERMISSIONS);
-    }
-
-    /**
-     * 读取文件内容
-     *
-     * @param fileUri 文件路径
-     * @return 文件内容
-     */
-    private String readFile(Uri fileUri) {
-        StringBuilder stringBuilder = new StringBuilder();
-        try {
-            InputStream inputStream = getContentResolver().openInputStream(fileUri);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                stringBuilder.append(line);
-                stringBuilder.append("\n");
-            }
-            reader.close();
-            inputStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Error reading file", Toast.LENGTH_SHORT).show();
-        }
-        return stringBuilder.toString();
-    }
-
-    /**
-     * JSON 字符串数据转 JSON
-     *
-     * @param jsonString JSON 字符串数据
-     * @return 文件 JSON 对象
-     */
-    private List<TextItem> parseJson(String jsonString) {
-
-        Gson gson = new Gson();
-        // 定义类型为 List<Item>
-        Type itemListType = new TypeToken<List<TextItem>>() {
-        }.getType();
-
-        try {
-            return gson.fromJson(jsonString, itemListType);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 
     @Override
@@ -446,28 +355,31 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == REQUEST_CODE_READ_EXTERNAL_STORAGE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // 权限已授予
+                Toast.makeText(this, "已获取读取文件权限", Toast.LENGTH_SHORT).show();
             } else {
                 // 权限被拒绝
+                Toast.makeText(this, "未获取读取文件权限", Toast.LENGTH_SHORT).show();
             }
         }
-        // 获取录屏等权限处理逻辑
-        if (requestCode == REQUEST_READ_WRITE_PERMISSIONS) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
-                // 权限已授予，可以继续操作
-                Toast.makeText(this, "Permissions ok ", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "Permissions denied", Toast.LENGTH_SHORT).show();
-            }
-        }
-        // 处理 WRITE_EXTERNAL_STORAGE 权限
+        // 获取写入文件权限处理逻辑
         if (requestCode == REQUEST_CODE_WRITE_EXTERNAL_STORAGE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 权限已授予
+                Toast.makeText(this, "已获取写入文件权限", Toast.LENGTH_SHORT).show();
+            } else {
+                // 权限被拒绝
+                Toast.makeText(this, "未获取写入文件权限", Toast.LENGTH_SHORT).show();
+            }
+        }
+        // 获取读取，写入文件权限处理逻辑
+        if (requestCode == REQUEST_CODE_READ_WRITE_PERMISSIONS) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
                 // 权限已授予，可以继续操作
-                Toast.makeText(this, "WRITE_EXTERNAL_STORAGE permission granted", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "已获取读取，写入文件权限 ", Toast.LENGTH_SHORT).show();
                 // 重新尝试创建目录
                 createDirectory();
             } else {
-                Toast.makeText(this, "WRITE_EXTERNAL_STORAGE permission denied", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "未获取读取，写入文件权限", Toast.LENGTH_SHORT).show();
             }
         }
     }
