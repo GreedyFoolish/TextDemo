@@ -10,6 +10,7 @@ import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
@@ -84,9 +85,6 @@ public class MainActivity extends AppCompatActivity {
     // 录制视频文件路径
     private String videoPath;
 
-    // 用于屏幕录制的ActivityResultLauncher
-    private ActivityResultLauncher<Intent> screenCaptureLauncher;
-
     /**
      * 创建活动时调用的方法
      *
@@ -118,37 +116,26 @@ public class MainActivity extends AppCompatActivity {
         // 初始化文件选择器辅助工具
         filePickerHelper = new FilePickerHelper(this, textItemDao);
 
+        // 初始化媒体投影管理器
+        mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+
         // 初始化视频播放控件
         VideoView videoView = binding.videoView;
 
         // 导入文件按钮点击事件
         binding.btnOpenFile.setOnClickListener(v -> filePickerHelper.openFile());
 
-        // 初始化媒体投影管理器
-        mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-
-        // 注册一个ActivityResultLauncher用于处理启动活动的结果
-        screenCaptureLauncher = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    // 检查结果码是否为RESULT_OK
-                    if (result.getResultCode() == RESULT_OK) {
-                        // 获取返回的Intent数据
-                        Intent data = result.getData();
-                        // 检查Intent数据是否为空
-                        if (data != null) {
-                            // 获取MediaProjection实例
-                            mediaProjection = mediaProjectionManager.getMediaProjection(result.getResultCode(), data);
-                            // 开始屏幕录制
-                            startScreenRecording(data);
-                        }
-                    }
-                }
-        );
         // 录屏按钮点击事件
         binding.btnStartRecording.setOnClickListener(v -> {
-            Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
-            screenCaptureLauncher.launch(captureIntent);
+            if (CheckPermission.isRecordingPermissionGranted(this)) {
+                // 启动屏幕录制
+                startScreenRecording(null);
+                Toast.makeText(this, "开始录制", Toast.LENGTH_SHORT).show();
+            } else {
+                // 请求录制权限
+                CheckPermission.requestRecordingPermission(this, REQUEST_RECORDING_PERMISSIONS);
+                Toast.makeText(this, "请授予录制权限", Toast.LENGTH_SHORT).show();
+            }
         });
 
         // 停止录屏按钮点击事件

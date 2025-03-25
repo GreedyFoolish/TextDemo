@@ -1,8 +1,11 @@
 package com.example.textdemo.service;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.hardware.display.DisplayManager;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
@@ -11,6 +14,7 @@ import android.media.MediaMuxer;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -19,6 +23,7 @@ import android.os.IBinder;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Surface;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -37,6 +42,7 @@ public class ScreenRecordingService extends Service {
     private static final int BIT_RATE = 6000000;
     private static final int FRAME_RATE = 30;
     private static final int I_FRAME_INTERVAL = 1;
+    private static final String CHANNEL_ID = "screen_recording_channel";
 
     private MediaProjectionManager mediaProjectionManager;
     private MediaProjection mediaProjection;
@@ -51,14 +57,31 @@ public class ScreenRecordingService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // 创建前台服务通知
-        Notification notification = new NotificationCompat.Builder(this, "screen_recording_channel")
-                .setContentTitle("正在录屏")
-                .setContentText("点击停止录屏")
+        // 创建一个通知渠道（如果需要）
+        createNotificationChannel();
+
+        // 创建一个通知
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("屏幕录制")
+                .setContentText("正在录制屏幕")
                 .setSmallIcon(R.drawable.ic_notification)
                 .build();
 
-        startForeground(NOTIFICATION_ID, notification);
+        Log.e("ScreenRecordingService", "dddddddddddddddddddddddddddd");
+        // 启动前台服务，并设置类型为 FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+            } else {
+                startForeground(NOTIFICATION_ID, notification);
+            }
+            Log.d("ScreenRecordingService", "Service started as a foreground service.");
+        } catch (Exception e) {
+            Log.e("ScreenRecordingService", "Failed to start service as a foreground service.", e);
+            Toast.makeText(this, "Failed to start service as a foreground service.", Toast.LENGTH_SHORT).show();
+            stopSelf();
+            return START_NOT_STICKY;
+        }
 
         // 获取 MediaProjection 数据
         Bundle extras = intent.getExtras();
@@ -67,7 +90,22 @@ public class ScreenRecordingService extends Service {
             startScreenRecording();
         }
 
-        return START_NOT_STICKY;
+        return START_STICKY;
+    }
+
+    private void createNotificationChannel() {
+        // 检查当前 Android 版本是否支持通知渠道
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "屏幕录制";
+            String description = "用于屏幕录制的通知渠道";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+
+            // 获取通知管理器并创建通知渠道
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
     }
 
     private void startScreenRecording() {
@@ -108,9 +146,11 @@ public class ScreenRecordingService extends Service {
             if (!success) {
                 // 处理创建失败的情况
                 stopSelf();
+                Toast.makeText(this, "创建目录失败", Toast.LENGTH_SHORT).show();
             }
         }
         videoPath = new File(directory, "recording.mp4").getAbsolutePath();
+        Toast.makeText(this, "创建目录成功" + videoPath, Toast.LENGTH_SHORT).show();
     }
 
     private void startMediaCodecThread() {

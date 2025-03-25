@@ -30,4 +30,17 @@ public class CheckPermission {
                 new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                 requestCode);
     }
+
+    public static boolean isRecordingPermissionGranted(Activity activity) {
+        return ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED
+                && ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    public static void requestRecordingPermission(Activity activity, int requestRecordingPermissions) {
+        ActivityCompat.requestPermissions(activity,
+                new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA},
+                requestRecordingPermissions);
+    }
 }
