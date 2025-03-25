@@ -3,6 +3,7 @@ package com.example.textdemo;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.hardware.display.VirtualDisplay;
 import android.media.MediaCodec;
 import android.media.MediaMuxer;
 import android.media.projection.MediaProjection;
@@ -111,14 +112,21 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        // 初始化文本项数据访问对象
+        textItemDao = new TextItemDao(this);
+
+        // 初始化文件选择器辅助工具
+        filePickerHelper = new FilePickerHelper(this, textItemDao);
+
         // 初始化视频播放控件
         VideoView videoView = binding.videoView;
 
         // 导入文件按钮点击事件
         binding.btnOpenFile.setOnClickListener(v -> filePickerHelper.openFile());
 
-        // 录屏按钮点击事件
+        // 初始化媒体投影管理器
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+
         // 注册一个ActivityResultLauncher用于处理启动活动的结果
         screenCaptureLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -137,6 +145,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
         );
+        // 录屏按钮点击事件
         binding.btnStartRecording.setOnClickListener(v -> {
             Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
             screenCaptureLauncher.launch(captureIntent);
