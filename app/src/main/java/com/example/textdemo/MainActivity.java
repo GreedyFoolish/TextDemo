@@ -30,8 +30,6 @@ import com.example.textdemo.service.ScreenRecordingService;
 import com.example.textdemo.tool.CheckPermission;
 import com.example.textdemo.tool.FilePickerHelper;
 
-import io.grpc.ManagedChannel;
-
 public class MainActivity extends AppCompatActivity {
     // 配置应用栏
     private AppBarConfiguration appBarConfiguration;
@@ -87,9 +85,6 @@ public class MainActivity extends AppCompatActivity {
 
     // 用于屏幕录制的ActivityResultLauncher
     private ActivityResultLauncher<Intent> screenCaptureLauncher;
-
-    // gRPC的ManagedChannel
-    private ManagedChannel channel;
 
     /**
      * 创建活动时调用的方法
