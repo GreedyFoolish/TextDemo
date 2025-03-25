@@ -33,6 +33,7 @@ import com.example.textdemo.R;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class ScreenRecordingService extends Service {
     private static final int NOTIFICATION_ID = 1;
@@ -55,6 +56,15 @@ public class ScreenRecordingService extends Service {
 
     private final HandlerThread handlerThread = new HandlerThread("MediaCodecHandlerThread");
 
+
+    public void setMediaProjection(MediaProjection mediaProjection) {
+        this.mediaProjection = mediaProjection;
+    }
+
+    public void setMediaProjectionManager(MediaProjectionManager mediaProjectionManager) {
+        this.mediaProjectionManager = mediaProjectionManager;
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // 创建一个通知渠道（如果需要）
@@ -66,6 +76,11 @@ public class ScreenRecordingService extends Service {
                 .setContentText("正在录制屏幕")
                 .setSmallIcon(R.drawable.ic_notification)
                 .build();
+
+        Bundle bundle = intent.getExtras();
+        assert bundle != null;
+        mediaProjection = mediaProjectionManager.getMediaProjection( bundle.getInt("code",-1), Objects.requireNonNull(intent.getParcelableExtra("data")));
+
 
         Log.e("ScreenRecordingService", "dddddddddddddddddddddddddddd");
         // 启动前台服务，并设置类型为 FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION

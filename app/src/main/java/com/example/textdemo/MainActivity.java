@@ -3,24 +3,23 @@ package com.example.textdemo;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.hardware.display.VirtualDisplay;
 import android.media.MediaCodec;
 import android.media.MediaMuxer;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
 import android.widget.Toast;
 import android.widget.VideoView;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -33,6 +32,8 @@ import com.example.textdemo.tool.CheckPermission;
 import com.example.textdemo.tool.FilePickerHelper;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String CHANNEL_ID = "CHANNEL_ID";
+
     // 配置应用栏
     private AppBarConfiguration appBarConfiguration;
     // 数据绑定对象
@@ -48,6 +49,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_OPEN_FILE_PERMISSIONS = 1001;
     // 请求码：录制权限
     private static final int REQUEST_RECORDING_PERMISSIONS = 1002;
+    // 请求码：屏幕捕获
+    private static final int REQUEST_CODE_SCREEN_CAPTURE = 1005;
 
     // 文本项数据访问对象
     private TextItemDao textItemDao;
@@ -85,6 +88,8 @@ public class MainActivity extends AppCompatActivity {
     // 录制视频文件路径
     private String videoPath;
 
+    private ScreenRecordingService screenRecordService;
+
     /**
      * 创建活动时调用的方法
      *
@@ -115,6 +120,8 @@ public class MainActivity extends AppCompatActivity {
 
         // 初始化文件选择器辅助工具
         filePickerHelper = new FilePickerHelper(this, textItemDao);
+
+        screenRecordService = new ScreenRecordingService();
 
         // 初始化媒体投影管理器
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
@@ -180,6 +187,47 @@ public class MainActivity extends AppCompatActivity {
         Intent serviceIntent = new Intent(this, ScreenRecordingService.class);
         // 停止ScreenRecordingService
         stopService(serviceIntent);
+    }
+
+    /**
+     * 处理活动结果回调
+     *
+     * 当调用 startActivityForResult 方法启动活动时，该方法用于接收被启动活动返回的结果
+     *
+     * @param requestCode 请求码，用于标识启动活动的请求
+     * @param resultCode  结果码，用于标识返回结果的类型
+     * @param data        返回的 Intent 数据，可能为 null
+     */
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        // 检查请求码是否为屏幕捕获请求
+        if (requestCode == REQUEST_CODE_SCREEN_CAPTURE) {
+            // 如果结果码为 RESULT_OK 且数据不为空，则用户已授予权限
+            if (resultCode == RESULT_OK && data != null) {
+                // 获取媒体投影对象
+                mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
+                // 创建通知
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                        .setContentTitle("Media Projection Service")
+                        .setContentText("Running media projection...")
+                        .setSmallIcon(android.R.drawable.ic_media_play);
+                // 将服务设置为前台服务
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    //将MediaProject传进service里，这个medieaProject应该为 null
+                    screenRecordService.setMediaProjection(mediaProjection);
+                    //将mediaProjectionManager传进service里，这个manager你应该已经在`ServiceConnection`时实例化好了（）
+                    screenRecordService.setMediaProjectionManager(mediaProjectionManager);
+                    Intent service = new Intent(this, ScreenRecordingService.class);
+                    service.putExtra("code", resultCode);
+                    service.putExtra("data", data);
+                    startForegroundService(service);
+                }
+
+            } else {
+                // 用户拒绝授予权限
+            }
+        }
     }
 
     /**
