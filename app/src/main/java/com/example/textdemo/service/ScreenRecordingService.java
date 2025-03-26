@@ -71,7 +71,22 @@ public class ScreenRecordingService extends Service {
         super.onCreate();
         // 创建一个通知渠道
         createNotificationChannel();
-        startForeground(NOTIFICATION_ID, createNotification());
+        startForeground(NOTIFICATION_ID, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+    }
+
+    private void createNotificationChannel() {
+        // 检查当前 Android 版本是否支持通知渠道
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "屏幕录制";
+            String description = "用于屏幕录制的通知渠道";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+
+            // 获取通知管理器并创建通知渠道
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
     }
 
     private Notification createNotification() {
@@ -129,20 +144,6 @@ public class ScreenRecordingService extends Service {
         return START_STICKY;
     }
 
-    private void createNotificationChannel() {
-        // 检查当前 Android 版本是否支持通知渠道
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = "屏幕录制";
-            String description = "用于屏幕录制的通知渠道";
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-            channel.setDescription(description);
-
-            // 获取通知管理器并创建通知渠道
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-        }
-    }
 
     private void startScreenRecording() {
         try {
