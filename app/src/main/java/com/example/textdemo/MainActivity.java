@@ -1,35 +1,34 @@
 package com.example.textdemo;
 
+import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.media.MediaCodec;
-import android.media.MediaMuxer;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
-import android.os.Build;
 import android.os.Bundle;
-import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.Surface;
 import android.widget.Toast;
 import android.widget.VideoView;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.NotificationCompat;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
-import com.example.textdemo.dao.TextItemDao;
 import com.example.textdemo.databinding.ActivityMainBinding;
-import com.example.textdemo.service.ScreenRecordingService;
+import com.example.textdemo.dao.TextItemDao;
 import com.example.textdemo.tool.CheckPermission;
 import com.example.textdemo.tool.FilePickerHelper;
+import com.example.textdemo.ScreenRecordingService;
 
 public class MainActivity extends AppCompatActivity {
     private static final String CHANNEL_ID = "CHANNEL_ID";
@@ -45,42 +44,17 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_CODE_WRITE_EXTERNAL_STORAGE = 2002;
     // 请求码：读取和写入外部存储权限
     private static final int REQUEST_CODE_READ_WRITE_PERMISSIONS = 2003;
-    // 请求码：打开文件权限
-    private static final int REQUEST_OPEN_FILE_PERMISSIONS = 1001;
     // 请求码：录制权限
-    private static final int REQUEST_RECORDING_PERMISSIONS = 1002;
-    // 请求码：屏幕捕获
-    private static final int REQUEST_CODE_SCREEN_CAPTURE = 1005;
+    private static final int REQUEST_RECORDING_PERMISSIONS = 1001;
 
     // 文本项数据访问对象
     private TextItemDao textItemDao;
 
     // 媒体投影管理器
     private MediaProjectionManager mediaProjectionManager;
+
     // 媒体投影实例
     private MediaProjection mediaProjection;
-    // 媒体编解码器
-    private MediaCodec mediaCodec;
-    // 表面用于渲染视频帧
-    private Surface surface;
-    // 媒体复用器
-    private MediaMuxer mediaMuxer;
-    // 视频轨道索引
-    private int videoTrackIndex = -1;
-    // 标记媒体复用器是否已启动
-    private boolean isMuxerStarted = false;
-    // 视频宽度
-    private static final int WIDTH = 720;
-    // 视频高度
-    private static final int HEIGHT = 1280;
-    // 显示密度
-    private static final int DENSITY = DisplayMetrics.DENSITY_DEFAULT;
-    // 比特率
-    private static final int BIT_RATE = 6000000;
-    // 帧率
-    private static final int FRAME_RATE = 30;
-    // I帧间隔
-    private static final int I_FRAME_INTERVAL = 1;
 
     // 文件选择器辅助工具
     private FilePickerHelper filePickerHelper;
@@ -88,7 +62,8 @@ public class MainActivity extends AppCompatActivity {
     // 录制视频文件路径
     private String videoPath;
 
-    private ScreenRecordingService screenRecordService;
+    // 屏幕录制活动结果处理程序
+    private ActivityResultLauncher<Intent> screenRecordLauncher;
 
     /**
      * 创建活动时调用的方法
@@ -121,13 +96,47 @@ public class MainActivity extends AppCompatActivity {
         // 初始化文件选择器辅助工具
         filePickerHelper = new FilePickerHelper(this, textItemDao);
 
-        screenRecordService = new ScreenRecordingService();
+        // 屏幕录制服务
+        ScreenRecordingService screenRecordService = new ScreenRecordingService();
 
         // 初始化媒体投影管理器
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
 
         // 初始化视频播放控件
         VideoView videoView = binding.videoView;
+
+        screenRecordLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                new ActivityResultCallback<ActivityResult>() {
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        int resultCode = result.getResultCode();
+                        if (resultCode == Activity.RESULT_OK) {
+                            // 处理返回的数据
+                            Intent data = result.getData();
+
+                            android.util.Log.e("onActivityResult data", String.valueOf(data));
+                            // 如果结果码为 RESULT_OK 且数据不为空，则用户已授予权限
+                            if (data != null) {
+                                // 获取媒体投影对象
+                                mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
+
+                                // 启动前台服务
+                                Intent serviceIntent = new Intent(MainActivity.this, ScreenRecordingService.class);
+                                serviceIntent.putExtra("code", resultCode);
+                                serviceIntent.putExtra("data", data);
+
+                                startForegroundService(serviceIntent);
+
+                                Toast.makeText(MainActivity.this, "开始录制", Toast.LENGTH_SHORT).show();
+                            } else {
+                                // 用户拒绝授予权限
+                                Toast.makeText(MainActivity.this, "请授予录制权限", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    }
+                }
+        );
 
         // 导入文件按钮点击事件
         binding.btnOpenFile.setOnClickListener(v -> filePickerHelper.openFile());
@@ -136,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
         binding.btnStartRecording.setOnClickListener(v -> {
             if (CheckPermission.isRecordingPermissionGranted(this)) {
                 // 启动屏幕录制
-                startScreenRecording(null);
+                startScreenRecording();
                 Toast.makeText(this, "开始录制", Toast.LENGTH_SHORT).show();
             } else {
                 // 请求录制权限
@@ -153,6 +162,7 @@ public class MainActivity extends AppCompatActivity {
             if (videoPath != null) {
                 videoView.setVideoPath(videoPath);
                 videoView.start();
+                Toast.makeText(this, "开始播放", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(this, "没有可用的录屏文件", Toast.LENGTH_SHORT).show();
             }
@@ -161,22 +171,11 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * 开始屏幕录制
-     *
-     * @param data 录制数据
      */
-    private void startScreenRecording(Intent data) {
-        // 创建一个启动ScreenRecordingService的Intent
-        Intent serviceIntent = new Intent(this, ScreenRecordingService.class);
-        // 创建一个Bundle用于传递数据
-        Bundle extras = new Bundle();
-        // 将结果码放入Bundle中
-        extras.putInt("resultCode", RESULT_OK);
-        // 将录制数据放入Bundle中
-        extras.putParcelable("data", data);
-        // 将Bundle附加到Intent中
-        serviceIntent.putExtras(extras);
-        // 启动ScreenRecordingService
-        startService(serviceIntent);
+    @SuppressLint("SdCardPath")
+    private void startScreenRecording() {
+        Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
+        screenRecordLauncher.launch(captureIntent);
     }
 
     /**
@@ -187,47 +186,6 @@ public class MainActivity extends AppCompatActivity {
         Intent serviceIntent = new Intent(this, ScreenRecordingService.class);
         // 停止ScreenRecordingService
         stopService(serviceIntent);
-    }
-
-    /**
-     * 处理活动结果回调
-     *
-     * 当调用 startActivityForResult 方法启动活动时，该方法用于接收被启动活动返回的结果
-     *
-     * @param requestCode 请求码，用于标识启动活动的请求
-     * @param resultCode  结果码，用于标识返回结果的类型
-     * @param data        返回的 Intent 数据，可能为 null
-     */
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        // 检查请求码是否为屏幕捕获请求
-        if (requestCode == REQUEST_CODE_SCREEN_CAPTURE) {
-            // 如果结果码为 RESULT_OK 且数据不为空，则用户已授予权限
-            if (resultCode == RESULT_OK && data != null) {
-                // 获取媒体投影对象
-                mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
-                // 创建通知
-                NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                        .setContentTitle("Media Projection Service")
-                        .setContentText("Running media projection...")
-                        .setSmallIcon(android.R.drawable.ic_media_play);
-                // 将服务设置为前台服务
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    //将MediaProject传进service里，这个medieaProject应该为 null
-                    screenRecordService.setMediaProjection(mediaProjection);
-                    //将mediaProjectionManager传进service里，这个manager你应该已经在`ServiceConnection`时实例化好了（）
-                    screenRecordService.setMediaProjectionManager(mediaProjectionManager);
-                    Intent service = new Intent(this, ScreenRecordingService.class);
-                    service.putExtra("code", resultCode);
-                    service.putExtra("data", data);
-                    startForegroundService(service);
-                }
-
-            } else {
-                // 用户拒绝授予权限
-            }
-        }
     }
 
     /**

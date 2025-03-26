@@ -1,5 +1,6 @@
 package com.example.textdemo.service;
 
+import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -66,44 +67,64 @@ public class ScreenRecordingService extends Service {
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        // 创建一个通知渠道（如果需要）
+    public void onCreate() {
+        super.onCreate();
+        // 创建一个通知渠道
         createNotificationChannel();
+        startForeground(NOTIFICATION_ID, createNotification());
+    }
 
-        // 创建一个通知
-        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+    private Notification createNotification() {
+        return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("屏幕录制")
                 .setContentText("正在录制屏幕")
                 .setSmallIcon(R.drawable.ic_notification)
                 .build();
+    }
 
-        Bundle bundle = intent.getExtras();
-        assert bundle != null;
-        mediaProjection = mediaProjectionManager.getMediaProjection( bundle.getInt("code",-1), Objects.requireNonNull(intent.getParcelableExtra("data")));
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null) {
+            int resultCode = intent.getIntExtra("code", Activity.RESULT_CANCELED);
+            Intent data = intent.getParcelableExtra("data");
 
+            mediaProjectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+            mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
 
-        Log.e("ScreenRecordingService", "dddddddddddddddddddddddddddd");
-        // 启动前台服务，并设置类型为 FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
-            } else {
-                startForeground(NOTIFICATION_ID, notification);
-            }
-            Log.d("ScreenRecordingService", "Service started as a foreground service.");
-        } catch (Exception e) {
-            Log.e("ScreenRecordingService", "Failed to start service as a foreground service.", e);
-            Toast.makeText(this, "Failed to start service as a foreground service.", Toast.LENGTH_SHORT).show();
-            stopSelf();
-            return START_NOT_STICKY;
+            // 在这里启动屏幕录制逻辑
+            // 例如，创建一个虚拟显示并开始录制
+            // startRecording(mediaProjection);
         }
-
-        // 获取 MediaProjection 数据
-        Bundle extras = intent.getExtras();
-        if (extras != null) {
-            mediaProjection = mediaProjectionManager.getMediaProjection(extras.getInt("resultCode"), extras.getParcelable("data"));
-            startScreenRecording();
-        }
+//        // 创建一个通知
+//        Notification notification = createNotification();
+//
+//        Bundle bundle = intent.getExtras();
+//        assert bundle != null;
+//        mediaProjection = mediaProjectionManager.getMediaProjection(bundle.getInt("code", -1), Objects.requireNonNull(intent.getParcelableExtra("data")));
+//
+//
+//        android.util.Log.e("onStartCommand intent", intent.toString());
+//        // 启动前台服务，并设置类型为 FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+//        try {
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+//            } else {
+//                startForeground(NOTIFICATION_ID, notification);
+//            }
+//            Log.d("ScreenRecordingService", "Service started as a foreground service.");
+//        } catch (Exception e) {
+//            Log.e("ScreenRecordingService", "Failed to start service as a foreground service.", e);
+//            Toast.makeText(this, "Failed to start service as a foreground service.", Toast.LENGTH_SHORT).show();
+//            stopSelf();
+//            return START_NOT_STICKY;
+//        }
+//
+//        // 获取 MediaProjection 数据
+//        Bundle extras = intent.getExtras();
+//        if (extras != null) {
+//            mediaProjection = mediaProjectionManager.getMediaProjection(extras.getInt("resultCode"), extras.getParcelable("data"));
+//            startScreenRecording();
+//        }
 
         return START_STICKY;
     }
