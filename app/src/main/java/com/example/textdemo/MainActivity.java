@@ -1,12 +1,19 @@
 package com.example.textdemo;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -116,38 +123,84 @@ public class MainActivity extends AppCompatActivity {
 
                         // 如果结果码为 RESULT_OK 且数据不为空，则用户已授予权限
                         if (resultCode == Activity.RESULT_OK && data != null) {
-                            if (!isFinishing() && !isDestroyed()) {
-                                Bundle projection = data.getBundleExtra("android.media.projection.extra.MEDIA_PROJECTION");
-                                Log.e("RESULT_OK projection", String.valueOf(projection));
-                                // 检查 Extras 内容
-                                Bundle extras = data.getExtras();
-                                if (extras != null) {
-                                    android.util.Log.e("RESULT_OK data getExtras", String.valueOf(extras.keySet()));
-                                } else {
-                                    Log.e("data getExtras", "Extras is null");
-                                }
-
-                                // 获取媒体投影对象
-                                mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
-                                if (mediaProjection == null) {
-                                    Log.e("mediaProjection", "无法获取媒体投影对象");
-                                    Toast.makeText(MainActivity.this, "无法获取媒体投影对象", Toast.LENGTH_SHORT).show();
-                                    return;
-                                }
-
-                                // 启动前台服务
-                                Intent serviceIntent = new Intent(MainActivity.this, ScreenRecordingService.class);
-                                serviceIntent.putExtra("code", resultCode);
-                                serviceIntent.putExtra("data", data);
-
-                                Log.e("RESULT_OK serviceIntent", String.valueOf(serviceIntent));
-                                startForegroundService(serviceIntent);
-
-                                Toast.makeText(MainActivity.this, "开始录制", Toast.LENGTH_SHORT).show();
-                            }
+                            this.handleScreenRecordingResult(data);
                         } else {
                             // 用户拒绝授予权限
                             Toast.makeText(MainActivity.this, "请授予录制权限", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    private void handleScreenRecordingResult(Intent data) {
+                        // 检查 Extras 内容
+                        Bundle extras = data.getExtras();
+                        if (extras != null) {
+                            StringBuilder keys = new StringBuilder();
+                            for (String key : extras.keySet()) {
+                                keys.append(key).append(", ");
+                            }
+                            Log.e("data getExtras", keys.toString().trim());
+                        }
+                         /*
+                         在 Android 13 (API 33) 及更高版本中，MediaProjection 的 Intent 结构有所变化。具体来说，
+                         MediaProjection 的 Bundle 键从 android.media.projection.extra.MEDIA_PROJECTION
+                         变为 android.media.projection.extra.EXTRA_MEDIA_PROJECTION。
+                         */
+                        // 获取媒体投影 Bundle
+                        Bundle projectionBundle = data.getBundleExtra("android.media.projection.extra.MEDIA_PROJECTION");
+                        Bundle projectionBundle33 = data.getBundleExtra("android.media.projection.extra.EXTRA_MEDIA_PROJECTION");
+
+                        // 如果 API 33 及以上，使用 EXTRA_MEDIA_PROJECTION 并复制为 MEDIA_PROJECTION
+                        if (projectionBundle33 != null) {
+                            data.putExtra("android.media.projection.extra.MEDIA_PROJECTION", projectionBundle33);
+                            projectionBundle = projectionBundle33;
+                        } else {
+                            Log.e("projectionBundle", String.valueOf(projectionBundle));
+                            Log.e("projectionBundle33", String.valueOf(projectionBundle33));
+                        }
+
+                        // 再次检查 Extras 内容
+                        Bundle extras2 = data.getExtras();
+                        if (extras2 != null) {
+                            StringBuilder keys = new StringBuilder();
+                            for (String key : extras2.keySet()) {
+                                keys.append(key).append(", ");
+                            }
+                            Log.e("data getExtras 2", keys.toString().trim());
+                        }
+
+                        // 获取媒体投影对象
+                        mediaProjection = mediaProjectionManager.getMediaProjection(Activity.RESULT_OK, data);
+                        if (mediaProjection == null) {
+                            Log.e("mediaProjection", "无法获取媒体投影对象");
+                            Toast.makeText(MainActivity.this, "无法获取媒体投影对象", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        Log.e("mediaProjection", "获取媒体投影对象成功");
+
+                        // 启动前台服务
+                        Intent serviceIntent = new Intent(MainActivity.this, ScreenRecordingService.class);
+                        serviceIntent.putExtra("code", Activity.RESULT_OK);
+                        serviceIntent.putExtra("data", data);
+
+                        Log.e("serviceIntent", String.valueOf(serviceIntent));
+
+                        // 使用 MediaStore 保存录屏文件
+                        ContentValues values = new ContentValues();
+                        values.put(MediaStore.Video.Media.DISPLAY_NAME, "screen_recording.mp4");
+                        values.put(MediaStore.Video.Media.MIME_TYPE, "video/mp4");
+                        values.put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/ScreenRecordings");
+
+                        ContentResolver resolver = getContentResolver();
+                        Uri videoUri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values);
+
+                        if (videoUri != null) {
+                            videoPath = videoUri.toString();
+                            serviceIntent.putExtra("videoUri", videoUri.toString());
+                            startForegroundService(serviceIntent);
+                            Toast.makeText(MainActivity.this, "开始录制", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Log.e("videoUri", "无法获取视频 URI");
+                            Toast.makeText(MainActivity.this, "无法获取视频 URI", Toast.LENGTH_SHORT).show();
                         }
                     }
                 }
@@ -161,10 +214,11 @@ public class MainActivity extends AppCompatActivity {
             if (CheckPermission.isRecordingPermissionGranted(this)) {
                 // 启动屏幕录制
                 startScreenRecording();
-                // Toast.makeText(this, "开始录制", Toast.LENGTH_SHORT).show();
             } else {
                 // 请求录制权限
-                CheckPermission.requestRecordingPermission(this, REQUEST_RECORDING_PERMISSIONS);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    CheckPermission.requestRecordingPermission(this, REQUEST_RECORDING_PERMISSIONS);
+                }
                 Toast.makeText(this, "请授予录制权限", Toast.LENGTH_SHORT).show();
             }
         });
