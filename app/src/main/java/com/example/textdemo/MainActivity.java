@@ -51,8 +51,9 @@ public class MainActivity extends AppCompatActivity {
     // 请求码：读取和写入外部存储权限
     private static final int REQUEST_CODE_READ_WRITE_PERMISSIONS = 2003;
     // 请求码：录制权限
-    private static final int REQUEST_RECORDING_PERMISSIONS = 1001;
-
+    private static final int REQUEST_RECORDING_PERMISSIONS = 2004;
+    // 请求码：SYSTEM_ALERT_WINDOW权限
+    private static final int REQUEST_CODE_SYSTEM_ALERT_WINDOW = 2005;
     // 文本项数据访问对象
     private TextItemDao textItemDao;
 
@@ -84,12 +85,33 @@ public class MainActivity extends AppCompatActivity {
         if (!CheckPermission.isReadExternalStorageGranted(this)) {
             // 如果未授予，请求读取外部存储的权限
             CheckPermission.requestReadExternalStoragePermission(this, REQUEST_CODE_READ_EXTERNAL_STORAGE);
+            Log.e("ScreenRecordingService", "请求读取外部存储的权限");
+        } else {
+            Log.e("ScreenRecordingService", "已授予读取外部存储的权限");
         }
-
         // 检查是否已经授予写入外部存储的权限
         if (!CheckPermission.isWriteExternalStorageGranted(this)) {
             // 如果未授予，请求写入外部存储的权限
             CheckPermission.requestWriteExternalStoragePermission(this, REQUEST_CODE_WRITE_EXTERNAL_STORAGE);
+            Log.e("ScreenRecordingService", "请求写入外部存储的权限");
+        } else {
+            Log.e("ScreenRecordingService", "已授予写入外部存储的权限");
+        }
+        // 检查是否已经授予录制权限
+        if (!CheckPermission.isRecordingPermissionGranted(this)) {
+            // 如果未授予，请求录制权限
+            CheckPermission.requestRecordingPermission(this, REQUEST_RECORDING_PERMISSIONS);
+            Log.e("ScreenRecordingService", "请求录制权限");
+        } else {
+            Log.e("ScreenRecordingService", "已授予录制权限");
+        }
+        // 检查是否已经授予SYSTEM_ALERT_WINDOW权限
+        if (!CheckPermission.isSystemAlertWindowPermissionGranted(this)) {
+            // 如果未授予，请求SYSTEM_ALERT_WINDOW权限
+            CheckPermission.requestSystemAlertWindowPermission(this, REQUEST_CODE_SYSTEM_ALERT_WINDOW);
+            Log.e("ScreenRecordingService", "请求SYSTEM_ALERT_WINDOW权限");
+        } else {
+            Log.e("ScreenRecordingService", "已授予SYSTEM_ALERT_WINDOW权限");
         }
 
         // 初始化数据绑定
@@ -295,6 +317,27 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "未获取读取，写入文件权限", Toast.LENGTH_SHORT).show();
             }
         }
+        // 处理录制权限请求结果
+        if (requestCode == REQUEST_RECORDING_PERMISSIONS) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 权限已授予
+                Toast.makeText(this, "已获取录制权限", Toast.LENGTH_SHORT).show();
+            } else {
+                // 权限被拒绝
+                Toast.makeText(this, "未获取录制权限", Toast.LENGTH_SHORT).show();
+            }
+        }
+        // 处理SYSTEM_ALERT_WINDOW权限请求结果
+        if (requestCode == REQUEST_CODE_SYSTEM_ALERT_WINDOW) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 权限已授予
+                Toast.makeText(this, "已获取SYSTEM_ALERT_WINDOW权限", Toast.LENGTH_SHORT).show();
+            } else {
+                // 权限被拒绝
+                Toast.makeText(this, "未获取SYSTEM_ALERT_WINDOW权限", Toast.LENGTH_SHORT).show();
+            }
+        }
+
     }
 
     /**
