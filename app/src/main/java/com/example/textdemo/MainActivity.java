@@ -36,6 +36,8 @@ import com.example.textdemo.dao.TextItemDao;
 import com.example.textdemo.tool.CheckPermission;
 import com.example.textdemo.tool.FilePickerHelper;
 
+import java.util.Arrays;
+
 public class MainActivity extends AppCompatActivity {
     private static final String CHANNEL_ID = "CHANNEL_ID";
 
@@ -48,12 +50,10 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_CODE_READ_EXTERNAL_STORAGE = 2001;
     // 请求码：写入外部存储权限
     private static final int REQUEST_CODE_WRITE_EXTERNAL_STORAGE = 2002;
-    // 请求码：读取和写入外部存储权限
-    private static final int REQUEST_CODE_READ_WRITE_PERMISSIONS = 2003;
     // 请求码：录制权限
-    private static final int REQUEST_RECORDING_PERMISSIONS = 2004;
+    private static final int REQUEST_RECORDING_PERMISSIONS = 2003;
     // 请求码：SYSTEM_ALERT_WINDOW权限
-    private static final int REQUEST_CODE_SYSTEM_ALERT_WINDOW = 2005;
+    private static final int REQUEST_CODE_SYSTEM_ALERT_WINDOW = 2004;
     // 文本项数据访问对象
     private TextItemDao textItemDao;
 
@@ -162,7 +162,7 @@ public class MainActivity extends AppCompatActivity {
                                 Log.e("data getExtras", "key:"+key+" value:"+extras.get(key));
                             }
                         }
-                         /*
+                        /*
                          在 Android 13 (API 33) 及更高版本中，MediaProjection 的 Intent 结构有所变化。具体来说，
                          MediaProjection 的 Bundle 键从 android.media.projection.extra.MEDIA_PROJECTION
                          变为 android.media.projection.extra.EXTRA_MEDIA_PROJECTION。
@@ -278,20 +278,13 @@ public class MainActivity extends AppCompatActivity {
         // 处理写入文件权限请求结果
         if (requestCode == REQUEST_CODE_WRITE_EXTERNAL_STORAGE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.e("onRequestPermissionsResult", "写入文件权限请求结果" + grantResults[0]);
                 // 权限已授予
                 Toast.makeText(this, "已获取写入文件权限", Toast.LENGTH_SHORT).show();
             } else {
+                Log.e("onRequestPermissionsResult", Arrays.toString(grantResults));
                 // 权限被拒绝
                 Toast.makeText(this, "未获取写入文件权限", Toast.LENGTH_SHORT).show();
-            }
-        }
-        // 处理读取和写入文件权限请求结果
-        if (requestCode == REQUEST_CODE_READ_WRITE_PERMISSIONS) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
-                // 权限已授予，可以继续操作
-                Toast.makeText(this, "已获取读取，写入文件权限 ", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "未获取读取，写入文件权限", Toast.LENGTH_SHORT).show();
             }
         }
         // 处理录制权限请求结果
@@ -314,7 +307,6 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "未获取SYSTEM_ALERT_WINDOW权限", Toast.LENGTH_SHORT).show();
             }
         }
-
     }
 
     /**
