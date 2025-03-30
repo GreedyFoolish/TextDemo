@@ -14,6 +14,7 @@
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <application
         android:allowBackup="true"
@@ -38,10 +39,9 @@
         </activity>
         <!-- 服务 -->
         <service
-            android:name=".service.ScreenRecordingService"
+            android:name=".ScreenRecordingService"
             android:foregroundServiceType="mediaProjection"
-            android:permission="android.permission.FOREGROUND_SERVICE"
-            tools:ignore="ForegroundServicePermission"/>
+            tools:ignore="ForegroundServicePermission" />
 
     </application>
 
