@@ -85,33 +85,33 @@ public class MainActivity extends AppCompatActivity {
         if (!CheckPermission.isReadExternalStorageGranted(this)) {
             // 如果未授予，请求读取外部存储的权限
             CheckPermission.requestReadExternalStoragePermission(this, REQUEST_CODE_READ_EXTERNAL_STORAGE);
-            Log.e("ScreenRecordingService", "请求读取外部存储的权限");
+            Log.e("CheckPermission", "请求读取外部存储的权限");
         } else {
-            Log.e("ScreenRecordingService", "已授予读取外部存储的权限");
+            Log.e("CheckPermission", "已授予读取外部存储的权限");
         }
         // 检查是否已经授予写入外部存储的权限
         if (!CheckPermission.isWriteExternalStorageGranted(this)) {
             // 如果未授予，请求写入外部存储的权限
             CheckPermission.requestWriteExternalStoragePermission(this, REQUEST_CODE_WRITE_EXTERNAL_STORAGE);
-            Log.e("ScreenRecordingService", "请求写入外部存储的权限");
+            Log.e("CheckPermission", "请求写入外部存储的权限");
         } else {
-            Log.e("ScreenRecordingService", "已授予写入外部存储的权限");
+            Log.e("CheckPermission", "已授予写入外部存储的权限");
         }
         // 检查是否已经授予录制权限
         if (!CheckPermission.isRecordingPermissionGranted(this)) {
             // 如果未授予，请求录制权限
             CheckPermission.requestRecordingPermission(this, REQUEST_RECORDING_PERMISSIONS);
-            Log.e("ScreenRecordingService", "请求录制权限");
+            Log.e("CheckPermission", "请求录制权限");
         } else {
-            Log.e("ScreenRecordingService", "已授予录制权限");
+            Log.e("CheckPermission", "已授予录制权限");
         }
         // 检查是否已经授予SYSTEM_ALERT_WINDOW权限
         if (!CheckPermission.isSystemAlertWindowPermissionGranted(this)) {
             // 如果未授予，请求SYSTEM_ALERT_WINDOW权限
             CheckPermission.requestSystemAlertWindowPermission(this, REQUEST_CODE_SYSTEM_ALERT_WINDOW);
-            Log.e("ScreenRecordingService", "请求SYSTEM_ALERT_WINDOW权限");
+            Log.e("CheckPermission", "请求SYSTEM_ALERT_WINDOW权限");
         } else {
-            Log.e("ScreenRecordingService", "已授予SYSTEM_ALERT_WINDOW权限");
+            Log.e("CheckPermission", "已授予SYSTEM_ALERT_WINDOW权限");
         }
 
         // 初始化数据绑定
