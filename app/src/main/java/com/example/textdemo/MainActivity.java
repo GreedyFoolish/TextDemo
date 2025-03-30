@@ -159,37 +159,14 @@ public class MainActivity extends AppCompatActivity {
                             StringBuilder keys = new StringBuilder();
                             for (String key : extras.keySet()) {
                                 keys.append(key).append(", ");
+                                Log.e("data getExtras", "key:"+key+" value:"+extras.get(key));
                             }
-                            Log.e("data getExtras", keys.toString().trim());
                         }
                          /*
                          在 Android 13 (API 33) 及更高版本中，MediaProjection 的 Intent 结构有所变化。具体来说，
                          MediaProjection 的 Bundle 键从 android.media.projection.extra.MEDIA_PROJECTION
                          变为 android.media.projection.extra.EXTRA_MEDIA_PROJECTION。
                          */
-                        // 获取媒体投影 Bundle
-                        Bundle projectionBundle = data.getBundleExtra("android.media.projection.extra.MEDIA_PROJECTION");
-                        Bundle projectionBundle33 = data.getBundleExtra("android.media.projection.extra.EXTRA_MEDIA_PROJECTION");
-
-                        // 如果 API 33 及以上，使用 EXTRA_MEDIA_PROJECTION 并复制为 MEDIA_PROJECTION
-                        if (projectionBundle33 != null) {
-                            data.putExtra("android.media.projection.extra.MEDIA_PROJECTION", projectionBundle33);
-                            projectionBundle = projectionBundle33;
-                        } else {
-                            Log.e("projectionBundle", String.valueOf(projectionBundle));
-                            Log.e("projectionBundle33", String.valueOf(projectionBundle33));
-                        }
-
-                        // 再次检查 Extras 内容
-                        Bundle extras2 = data.getExtras();
-                        if (extras2 != null) {
-                            StringBuilder keys = new StringBuilder();
-                            for (String key : extras2.keySet()) {
-                                keys.append(key).append(", ");
-                            }
-                            Log.e("data getExtras 2", keys.toString().trim());
-                        }
-
                         // 获取媒体投影对象
                         mediaProjection = mediaProjectionManager.getMediaProjection(Activity.RESULT_OK, data);
                         if (mediaProjection == null) {
