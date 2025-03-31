@@ -220,10 +220,6 @@ public class ScreenRecordingService extends Service {
             Toast.makeText(this, "MediaRecorder prepare() failed", Toast.LENGTH_SHORT).show();
         }
 
-        // 创建一个SurfaceTexture实例
-        @SuppressLint("Recycle") SurfaceTexture surfaceTexture = new SurfaceTexture(10);
-        //        mediaRecorder.setVideoSurface(surface); // 确保MediaRecorder使用这个Surface
-
-        return new Surface(surfaceTexture);
+        return mediaRecorder.getSurface();
     }
 }
