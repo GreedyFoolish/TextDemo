@@ -18,7 +18,6 @@ import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.os.Parcelable;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Surface;
@@ -27,7 +26,6 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import java.io.IOException;
-import java.util.Objects;
 
 public class ScreenRecordingService extends Service {
     private static final String CHANNEL_ID = "MediaProjectionServiceChannel";
@@ -43,6 +41,13 @@ public class ScreenRecordingService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 创建通知渠道
+        createNotificationChannel();
+
+        // 创建通知
+        Notification notification = createNotification();
+        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+
         // 获取媒体投影数据
         Intent mediaProjectionData = intent.getParcelableExtra("mediaProjectionData");
         intent.getParcelableExtra("videoPath");
@@ -60,7 +65,7 @@ public class ScreenRecordingService extends Service {
             StringBuilder keys = new StringBuilder();
             for (String key : extras.keySet()) {
                 keys.append(key).append(", ");
-                Log.e("data getExtras", "key:"+key+" value:"+extras.get(key));
+                Log.e("data getExtras", "key:" + key + " value:" + extras.get(key));
             }
         }
 
@@ -86,6 +91,20 @@ public class ScreenRecordingService extends Service {
 
         Log.e("mediaProjection", mediaProjection.toString());
 
+        // 注册 MediaProjection.Callback
+        mediaProjection.registerCallback(new MediaProjection.Callback() {
+            @Override
+            public void onStop() {
+                super.onStop();
+                Log.e("ScreenCapture", "MediaProjection stopped");
+                if (virtualDisplay != null) {
+                    virtualDisplay.release();
+                    virtualDisplay = null;
+                }
+                mediaProjection = null;
+            }
+        }, null);
+
         // 配置虚拟显示
         DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
         int width = displayMetrics.widthPixels;
@@ -99,11 +118,6 @@ public class ScreenRecordingService extends Service {
 
         // 开始录制
         startRecording();
-
-        // 启动前台服务
-        createNotificationChannel();
-        Notification notification = createNotification();
-        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
 
         return START_NOT_STICKY;
     }
@@ -144,14 +158,19 @@ public class ScreenRecordingService extends Service {
         super.onDestroy();
         if (mediaProjection != null) {
             mediaProjection.stop();
+            mediaProjection = null;
         }
         if (virtualDisplay != null) {
             virtualDisplay.release();
+            virtualDisplay = null;
         }
         if (mediaRecorder != null) {
-            mediaRecorder.stop();
-            mediaRecorder.reset();
-            mediaRecorder.release();
+            try {
+                mediaRecorder.stop(); // 停止录制
+                mediaRecorder.release(); // 释放资源
+            } catch (RuntimeException e) {
+                Log.e("ScreenRecordingService", "停止媒体记录器时出错", e);
+            }
             mediaRecorder = null;
         }
     }
@@ -181,20 +200,20 @@ public class ScreenRecordingService extends Service {
         mediaRecorder.setVideoSize(1280, 720);
         mediaRecorder.setVideoEncodingBitRate(5000000);
         mediaRecorder.setVideoFrameRate(30);
-        
+
         // 设置输出文件路径
         mediaRecorder.setOutputFile(videoFilePath);
-        
+
         try {
             mediaRecorder.prepare();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        
+
         // 创建一个SurfaceTexture实例
         @SuppressLint("Recycle") SurfaceTexture surfaceTexture = new SurfaceTexture(10);
         //        mediaRecorder.setVideoSurface(surface); // 确保MediaRecorder使用这个Surface
-        
+
         return new Surface(surfaceTexture);
     }
 }
