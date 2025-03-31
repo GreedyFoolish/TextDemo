@@ -21,6 +21,7 @@ import android.os.IBinder;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Surface;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -192,15 +193,21 @@ public class ScreenRecordingService extends Service {
     private Surface createVirtualDisplaySurface(String videoFilePath) {
         // 创建一个MediaRecorder实例
         mediaRecorder = new MediaRecorder();
+        // 设置音频源
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        // 设置视频源
         mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+        // 设置输出格式
         mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        // 设置音频编码
         mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        // 设置视频编码
         mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         mediaRecorder.setVideoSize(1280, 720);
+        // 设置视频编码比特率
         mediaRecorder.setVideoEncodingBitRate(5000000);
+        // 设置视频帧率
         mediaRecorder.setVideoFrameRate(30);
-
         // 设置输出文件路径
         mediaRecorder.setOutputFile(videoFilePath);
 
@@ -208,6 +215,9 @@ public class ScreenRecordingService extends Service {
             mediaRecorder.prepare();
         } catch (IOException e) {
             e.printStackTrace();
+            // 处理异常
+            Log.e("ScreenRecordingService", "MediaRecorder prepare() failed", e);
+            Toast.makeText(this, "MediaRecorder prepare() failed", Toast.LENGTH_SHORT).show();
         }
 
         // 创建一个SurfaceTexture实例
