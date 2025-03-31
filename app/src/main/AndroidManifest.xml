@@ -39,7 +39,7 @@
         </activity>
         <!-- 服务 -->
         <service
-            android:name=".ScreenRecordingService"
+            android:name=".service.ScreenRecordingService"
             android:foregroundServiceType="mediaProjection"
             tools:ignore="ForegroundServicePermission" />
 

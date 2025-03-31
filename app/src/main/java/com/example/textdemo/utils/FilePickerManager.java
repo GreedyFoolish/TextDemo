@@ -1,4 +1,4 @@
-package com.example.textdemo.tool;
+package com.example.textdemo.utils;
 
 import android.app.Activity;
 import android.content.Intent;

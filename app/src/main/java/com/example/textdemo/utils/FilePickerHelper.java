@@ -1,4 +1,4 @@
-package com.example.textdemo.tool;
+package com.example.textdemo.utils;
 
 import androidx.appcompat.app.AppCompatActivity;
 

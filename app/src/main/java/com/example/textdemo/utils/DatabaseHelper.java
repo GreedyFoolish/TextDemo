@@ -1,4 +1,5 @@
-package com.example.textdemo.tool;
+package com.example.textdemo.utils;
+
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;

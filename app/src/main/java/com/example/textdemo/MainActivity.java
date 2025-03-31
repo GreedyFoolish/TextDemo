@@ -1,19 +1,12 @@
 package com.example.textdemo;
 
-import android.Manifest;
 import android.app.Activity;
-import android.content.ContentResolver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -31,17 +24,17 @@ import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
+import com.example.textdemo.biz.ScreenRecordingBiz;
 import com.example.textdemo.databinding.ActivityMainBinding;
 import com.example.textdemo.dao.TextItemDao;
-import com.example.textdemo.tool.CheckPermission;
-import com.example.textdemo.tool.FilePickerHelper;
+import com.example.textdemo.utils.CheckPermission;
+import com.example.textdemo.utils.FIleOperation;
+import com.example.textdemo.utils.FilePickerHelper;
+import com.example.textdemo.service.ScreenRecordingService;
 
-import java.io.File;
 import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String CHANNEL_ID = "CHANNEL_ID";
-
     // 配置应用栏
     private AppBarConfiguration appBarConfiguration;
     // 数据绑定对象
@@ -58,14 +51,11 @@ public class MainActivity extends AppCompatActivity {
     // 文本项数据访问对象
     private TextItemDao textItemDao;
 
-    // 媒体投影管理器
-    private MediaProjectionManager mediaProjectionManager;
-
-    // 媒体投影实例
-    private MediaProjection mediaProjection;
-
     // 文件选择器辅助工具
     private FilePickerHelper filePickerHelper;
+
+    // 媒体投影管理器
+    private MediaProjectionManager mediaProjectionManager;
 
     // 录制视频文件路径
     private String videoPath;
@@ -125,9 +115,6 @@ public class MainActivity extends AppCompatActivity {
         // 初始化文件选择器辅助工具
         filePickerHelper = new FilePickerHelper(this, textItemDao);
 
-        // 屏幕录制服务
-        ScreenRecordingService screenRecordService = new ScreenRecordingService();
-
         // 初始化媒体投影管理器
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
 
@@ -135,7 +122,7 @@ public class MainActivity extends AppCompatActivity {
         VideoView videoView = binding.videoView;
 
         // 初始化视频文件的路径
-        videoPath = getVideoFilePath();
+        videoPath = FIleOperation.getVideoFilePath();
 
         screenRecordLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -163,10 +150,10 @@ public class MainActivity extends AppCompatActivity {
                             StringBuilder keys = new StringBuilder();
                             for (String key : extras.keySet()) {
                                 keys.append(key).append(", ");
-                                Log.e("data getExtras", "key:"+key+" value:"+extras.get(key));
+                                Log.e("Intent getExtras", "key:" + key + " value:" + extras.get(key));
                             }
                         }
-                        // 启动服务
+                        // 创建前台服务
                         Intent serviceIntent = new Intent(MainActivity.this, ScreenRecordingService.class);
                         serviceIntent.putExtra("code", Activity.RESULT_OK);
                         serviceIntent.putExtra("data", data);
@@ -174,8 +161,8 @@ public class MainActivity extends AppCompatActivity {
                         serviceIntent.putExtra("mediaProjectionData", data);
                         // 添加文件路径参数
                         serviceIntent.putExtra("videoPath", videoPath);
-                        Log.e("Intent data", "data: "+data);
-                        Log.e("Intent videoPath", "videoPath: "+videoPath);
+                        Log.e("Intent data", String.valueOf(data));
+                        Log.e("Intent videoPath", videoPath);
                         // 启动服务
                         startService(serviceIntent);
                     }
@@ -189,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
         binding.btnStartRecording.setOnClickListener(v -> {
             if (CheckPermission.isRecordingPermissionGranted(this)) {
                 // 启动屏幕录制
-                startScreenRecording();
+                ScreenRecordingBiz.startScreenRecording(this, screenRecordLauncher);
             } else {
                 // 请求录制权限
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -200,67 +187,12 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // 停止录屏按钮点击事件
-        binding.btnStopRecording.setOnClickListener(v -> stopScreenRecording());
+        binding.btnStopRecording.setOnClickListener(v -> ScreenRecordingBiz.stopScreenRecording(this));
 
         // 播放录屏按钮点击事件
-        binding.playRecording.setOnClickListener(v -> {
-            // 检查视频文件是否存在
-            if (videoPath != null) {
-                // 设置VideoView的视频URI
-                Uri videoUri = Uri.parse(videoPath);
-                videoView.setVideoURI(videoUri);
-                videoView.start();
-            } else {
-                // 提示用户没有可用视频文件
-                Toast.makeText(MainActivity.this, "没有可用的视频文件", Toast.LENGTH_SHORT).show();
-            }
-        });
+        binding.playRecording.setOnClickListener(v -> ScreenRecordingBiz.playRecording(this, videoView));
     }
 
-    /**
-     * 开始屏幕录制
-     */
-    private void startScreenRecording() {
-        Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
-        screenRecordLauncher.launch(captureIntent);
-    }
-
-    /**
-     * 停止屏幕录制
-     */
-    private void stopScreenRecording() {
-        // 创建一个停止ScreenRecordingService的Intent
-        Intent serviceIntent = new Intent(this, ScreenRecordingService.class);
-        // 停止ScreenRecordingService
-        stopService(serviceIntent);
-        Log.e("stopScreenRecording", "停止屏幕录制");
-    }
-
-    // 获取视频文件的路径
-    private String getVideoFilePath() {
-        // 确保目录存在，如果不存在则创建
-        File moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
-        if (!moviesDir.exists()) {
-            boolean mkdirsResult = moviesDir.mkdirs();
-            if (!mkdirsResult) {
-                Log.e("getVideoFilePath", "Failed to create movies directory");
-                return null;
-            }
-        }
-
-        File videoFile = null;
-        // 这里假设视频文件存储在应用的外部存储目录下，并命名为"recorded_video.mp4"
-        // 实际应用中可能需要根据实际情况调整路径
-        try {
-            videoFile = new File(moviesDir, "recorded_video.mp4");
-            Log.e("moviesDir", videoFile.getAbsolutePath());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        Log.e("return", videoFile.getAbsolutePath());
-        // 返回路径以便创建文件
-        return videoFile.getAbsolutePath();
-    }
     /**
      * 处理权限请求结果
      *

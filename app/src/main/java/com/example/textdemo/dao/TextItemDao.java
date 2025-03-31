@@ -6,7 +6,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
 import com.example.textdemo.entity.TextItem;
-import com.example.textdemo.tool.DatabaseHelper;
+import com.example.textdemo.utils.DatabaseHelper;
 
 import java.util.ArrayList;
 import java.util.List;
