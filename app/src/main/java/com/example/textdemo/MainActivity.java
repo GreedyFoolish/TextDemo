@@ -1,11 +1,9 @@
 package com.example.textdemo;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.projection.MediaProjectionManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -13,10 +11,7 @@ import android.view.MenuItem;
 import android.widget.Toast;
 import android.widget.VideoView;
 
-import androidx.activity.result.ActivityResult;
-import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.navigation.NavController;
@@ -30,7 +25,7 @@ import com.example.textdemo.dao.TextItemDao;
 import com.example.textdemo.utils.CheckPermission;
 import com.example.textdemo.utils.FIleOperation;
 import com.example.textdemo.utils.FilePickerHelper;
-import com.example.textdemo.service.ScreenRecordingService;
+import com.example.textdemo.utils.ScreenRecordingHelper;
 
 import java.util.Arrays;
 
@@ -124,67 +119,17 @@ public class MainActivity extends AppCompatActivity {
         // 初始化视频文件的路径
         videoPath = FIleOperation.getVideoFilePath();
 
-        screenRecordLauncher = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                new ActivityResultCallback<ActivityResult>() {
-                    @Override
-                    public void onActivityResult(ActivityResult result) {
-                        // 获取结果码和数据
-                        int resultCode = result.getResultCode();
-                        // 处理返回的数据
-                        Intent data = result.getData();
+        // 初始化屏幕录制辅助工具
+        ScreenRecordingHelper screenRecordingHelper = new ScreenRecordingHelper(this, videoPath);
 
-                        // 如果结果码为 RESULT_OK 且数据不为空，则用户已授予权限
-                        if (resultCode == Activity.RESULT_OK && data != null) {
-                            handleScreenRecordingResult(data);
-                        } else {
-                            // 用户拒绝授予权限
-                            Toast.makeText(MainActivity.this, "请授予录制权限", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-
-                    private void handleScreenRecordingResult(Intent data) {
-                        // 检查 Extras 内容
-                        Bundle extras = data.getExtras();
-                        if (extras != null) {
-                            StringBuilder keys = new StringBuilder();
-                            for (String key : extras.keySet()) {
-                                keys.append(key).append(", ");
-                                Log.e("Intent getExtras", "key:" + key + " value:" + extras.get(key));
-                            }
-                        }
-                        // 创建前台服务
-                        Intent serviceIntent = new Intent(MainActivity.this, ScreenRecordingService.class);
-                        serviceIntent.putExtra("code", Activity.RESULT_OK);
-                        serviceIntent.putExtra("data", data);
-                        // 添加媒体投影数据
-                        serviceIntent.putExtra("mediaProjectionData", data);
-                        // 添加文件路径参数
-                        serviceIntent.putExtra("videoPath", videoPath);
-                        Log.e("Intent data", String.valueOf(data));
-                        Log.e("Intent videoPath", videoPath);
-                        // 启动服务
-                        startService(serviceIntent);
-                    }
-                }
-        );
+        // 初始化屏幕录制活动结果处理程序
+        screenRecordLauncher = screenRecordingHelper.getScreenRecordingManager().getScreenRecordLauncher();
 
         // 导入文件按钮点击事件
         binding.btnOpenFile.setOnClickListener(v -> filePickerHelper.openFile());
 
         // 录屏按钮点击事件
-        binding.btnStartRecording.setOnClickListener(v -> {
-            if (CheckPermission.isRecordingPermissionGranted(this)) {
-                // 启动屏幕录制
-                ScreenRecordingBiz.startScreenRecording(this, screenRecordLauncher);
-            } else {
-                // 请求录制权限
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    CheckPermission.requestRecordingPermission(this, REQUEST_RECORDING_PERMISSIONS);
-                }
-                Toast.makeText(this, "请授予录制权限", Toast.LENGTH_SHORT).show();
-            }
-        });
+        binding.btnStartRecording.setOnClickListener(v -> ScreenRecordingBiz.startScreenRecording(this, screenRecordLauncher, REQUEST_RECORDING_PERMISSIONS));
 
         // 停止录屏按钮点击事件
         binding.btnStopRecording.setOnClickListener(v -> ScreenRecordingBiz.stopScreenRecording(this));

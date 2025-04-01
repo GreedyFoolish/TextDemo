@@ -29,11 +29,18 @@ import com.example.textdemo.R;
 import java.io.IOException;
 
 public class ScreenRecordingService extends Service {
+    // 通知渠道的 ID
     private static final String CHANNEL_ID = "MediaProjectionServiceChannel";
+    // 通知 ID
     private static final int NOTIFICATION_ID = 1;
-
-    private MediaProjection mediaProjection;
+    // 媒体投影管理器
     private MediaProjectionManager mediaProjectionManager;
+    // 媒体投影对象
+    private MediaProjection mediaProjection;
+    // 媒体录制器
+    private MediaRecorder mediaRecorder;
+    // 虚拟显示
+    private VirtualDisplay virtualDisplay;
 
     @Override
     public void onCreate() {
@@ -126,31 +133,78 @@ public class ScreenRecordingService extends Service {
         return START_NOT_STICKY;
     }
 
+    /**
+     * 创建通知渠道
+     */
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel serviceChannel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "Media Projection Service Channel",
-                    NotificationManager.IMPORTANCE_DEFAULT
-            );
+            CharSequence name = "屏幕录制";
+            String description = "用于屏幕录制的通知渠道";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel serviceChannel = new NotificationChannel(CHANNEL_ID, name, importance);
+            serviceChannel.setDescription(description);
 
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            manager.createNotificationChannel(serviceChannel);
+            // 获取通知管理器并创建通知渠道
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(serviceChannel);
         }
     }
 
+    /**
+     * 创建通知
+     *
+     * @return Notification
+     */
     private Notification createNotification() {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Screen Recording")
-                .setContentText("Recording in progress")
+                .setContentTitle("屏幕录制")
+                .setContentText("正在录制屏幕")
                 .setSmallIcon(R.drawable.ic_notification)
                 .build();
     }
 
-    private MediaRecorder mediaRecorder;
-    private VirtualDisplay virtualDisplay;
+    /**
+     * 创建虚拟显示
+     *
+     * @param videoFilePath 视频文件路径
+     * @return Surface
+     */
+    private Surface createVirtualDisplaySurface(String videoFilePath) {
+        // 创建一个MediaRecorder实例
+        mediaRecorder = new MediaRecorder();
+        // 设置音频源
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        // 设置视频源
+        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+        // 设置输出格式
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        // 设置音频编码
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        // 设置视频编码
+        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+        mediaRecorder.setVideoSize(1280, 720);
+        // 设置视频编码比特率
+        mediaRecorder.setVideoEncodingBitRate(5000000);
+        // 设置视频帧率
+        mediaRecorder.setVideoFrameRate(30);
+        // 设置输出文件路径
+        mediaRecorder.setOutputFile(videoFilePath);
 
-    // 添加屏幕录制逻辑
+        try {
+            mediaRecorder.prepare();
+        } catch (IOException e) {
+            e.printStackTrace();
+            // 处理异常
+            Log.e("ScreenRecordingService", "MediaRecorder prepare() failed", e);
+            Toast.makeText(this, "MediaRecorder prepare() failed", Toast.LENGTH_SHORT).show();
+        }
+
+        return mediaRecorder.getSurface();
+    }
+
+    /**
+     * 开始录制视频
+     */
     private void startRecording() {
         if (mediaRecorder != null) {
             mediaRecorder.start();
@@ -183,46 +237,5 @@ public class ScreenRecordingService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return null;
-    }
-
-    public void setMediaProjection(MediaProjection mediaProjection) {
-        this.mediaProjection = mediaProjection;
-    }
-
-    public void setMediaProjectionManager(MediaProjectionManager mediaProjectionManager) {
-        this.mediaProjectionManager = mediaProjectionManager;
-    }
-
-    private Surface createVirtualDisplaySurface(String videoFilePath) {
-        // 创建一个MediaRecorder实例
-        mediaRecorder = new MediaRecorder();
-        // 设置音频源
-        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        // 设置视频源
-        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
-        // 设置输出格式
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        // 设置音频编码
-        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        // 设置视频编码
-        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-        mediaRecorder.setVideoSize(1280, 720);
-        // 设置视频编码比特率
-        mediaRecorder.setVideoEncodingBitRate(5000000);
-        // 设置视频帧率
-        mediaRecorder.setVideoFrameRate(30);
-        // 设置输出文件路径
-        mediaRecorder.setOutputFile(videoFilePath);
-
-        try {
-            mediaRecorder.prepare();
-        } catch (IOException e) {
-            e.printStackTrace();
-            // 处理异常
-            Log.e("ScreenRecordingService", "MediaRecorder prepare() failed", e);
-            Toast.makeText(this, "MediaRecorder prepare() failed", Toast.LENGTH_SHORT).show();
-        }
-
-        return mediaRecorder.getSurface();
     }
 }
