@@ -20,6 +20,7 @@ import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
 import com.example.textdemo.biz.ScreenRecordingBiz;
+import com.example.textdemo.biz.SelectionRectBiz;
 import com.example.textdemo.databinding.ActivityMainBinding;
 import com.example.textdemo.dao.TextItemDao;
 import com.example.textdemo.utils.CheckPermission;
@@ -136,6 +137,9 @@ public class MainActivity extends AppCompatActivity {
 
         // 播放录屏按钮点击事件
         binding.playRecording.setOnClickListener(v -> ScreenRecordingBiz.playRecording(this, videoView));
+
+        // 选择范围按钮点击事件
+        binding.selectionRect.setOnClickListener(v -> SelectionRectBiz.addView(this, binding));
     }
 
     /**
