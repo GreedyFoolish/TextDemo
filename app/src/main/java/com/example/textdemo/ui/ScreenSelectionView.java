@@ -102,12 +102,6 @@ public class ScreenSelectionView extends View {
                     // 右下角
                     isAdjust = true;
                     adjustOrientation = 4;
-                } else {
-                    // 移动整个矩形
-                    selectionRect.left = (int) startX;
-                    selectionRect.top = (int) startY;
-                    selectionRect.right = selectionRect.left + (selectionRect.right - selectionRect.left);
-                    selectionRect.bottom = selectionRect.top + (selectionRect.bottom - selectionRect.top);
                 }
                 break;
             case MotionEvent.ACTION_MOVE:

@@ -37,11 +37,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!-- 服务 -->
+        <!-- 录屏服务 -->
         <service
             android:name=".service.ScreenRecordingService"
             android:foregroundServiceType="mediaProjection"
             tools:ignore="ForegroundServicePermission" />
+        <!-- 悬浮窗服务 -->
+        <service android:name=".service.FloatingWindowService"/>
 
     </application>
 
