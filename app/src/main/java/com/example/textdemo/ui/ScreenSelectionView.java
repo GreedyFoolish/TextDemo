@@ -7,10 +7,13 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.annotation.NonNull;
+
+import com.example.textdemo.utils.OffsetUtils;
 
 /**
  * 屏幕选择视图，用于用户选择屏幕区域进行捕获
@@ -23,11 +26,11 @@ public class ScreenSelectionView extends View {
     private Paint paint;
     // 选择区域
     private Rect selectionRect;
-    // 调整大小
-    private int resizeOffset = 20; // 调整大小的区域大小
-    // 是否正在调整大小
-    private boolean isResizing = false;
-    // 开始调整大小
+    // 是否正在调整
+    private boolean isAdjust = false;
+    // 调整方位
+    private int adjustOrientation = 0;
+    // 开始位置
     private float startX, startY;
 
     public ScreenSelectionView(Context context) {
@@ -47,7 +50,6 @@ public class ScreenSelectionView extends View {
         this.context = context;
         init();
     }
-
 
     /**
      * 初始化画笔和选择区域
@@ -71,14 +73,6 @@ public class ScreenSelectionView extends View {
         if (selectionRect != null) {
             // 绘制选择区域
             canvas.drawRect(selectionRect, paint);
-            // 绘制调整大小的区域
-            canvas.drawRect(
-                    selectionRect.right - resizeOffset,
-                    selectionRect.bottom - resizeOffset,
-                    selectionRect.right,
-                    selectionRect.bottom,
-                    paint
-            );
         }
     }
 
@@ -88,31 +82,85 @@ public class ScreenSelectionView extends View {
         // 处理触摸事件
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                selectionRect.left = (int) event.getX();
-                selectionRect.top = (int) event.getY();
-                // 检查是否点击了调整大小的区域
-                if (startX >= selectionRect.right - resizeOffset && startX <= selectionRect.right &&
-                        startY >= selectionRect.bottom - resizeOffset && startY <= selectionRect.bottom) {
-                    isResizing = true;
+                // 记录开始位置
+                startX = event.getX();
+                startY = event.getY();
+                // 判断是否点击了调整大小区域
+                if (OffsetUtils.isWithinOffset(startX, selectionRect.left) && OffsetUtils.isWithinOffset(startY, selectionRect.top)) {
+                    // 左上角
+                    isAdjust = true;
+                    adjustOrientation = 1;
+                } else if (OffsetUtils.isWithinOffset(startX, selectionRect.right) && OffsetUtils.isWithinOffset(startY, selectionRect.top)) {
+                    // 右上角
+                    isAdjust = true;
+                    adjustOrientation = 2;
+                } else if (OffsetUtils.isWithinOffset(startX, selectionRect.left) && OffsetUtils.isWithinOffset(startY, selectionRect.bottom)) {
+                    // 左下角
+                    isAdjust = true;
+                    adjustOrientation = 3;
+                } else if (OffsetUtils.isWithinOffset(startX, selectionRect.right) && OffsetUtils.isWithinOffset(startY, selectionRect.bottom)) {
+                    // 右下角
+                    isAdjust = true;
+                    adjustOrientation = 4;
+                } else {
+                    // 移动整个矩形
+                    selectionRect.left = (int) startX;
+                    selectionRect.top = (int) startY;
+                    selectionRect.right = selectionRect.left + (selectionRect.right - selectionRect.left);
+                    selectionRect.bottom = selectionRect.top + (selectionRect.bottom - selectionRect.top);
                 }
                 break;
             case MotionEvent.ACTION_MOVE:
-                if (isResizing) {
-                    // 调整矩形框大小
-                    selectionRect.right = (int) event.getX();
-                    selectionRect.bottom = (int) event.getY();
-                    // 重新绘制
-                    invalidate();
+                if (isAdjust) {
+                    int x = (int) event.getX();
+                    int y = (int) event.getY();
+                    switch (adjustOrientation) {
+                        case 1:
+                            // 左上角
+                            selectionRect.left = x;
+                            selectionRect.top = y;
+                            break;
+                        case 2:
+                            // 右上角
+                            selectionRect.right = x;
+                            selectionRect.top = y;
+                            break;
+                        case 3:
+                            // 左下角
+                            selectionRect.left = x;
+                            selectionRect.bottom = y;
+                            break;
+                        case 4:
+                            // 右下角
+                            selectionRect.right = x;
+                            selectionRect.bottom = y;
+                            break;
+                        default:
+                            // 移动整个矩形
+                            int dx = (int) (event.getX() - startX);
+                            int dy = (int) (event.getY() - startY);
+                            selectionRect.offset(dx, dy);
+                            startX = event.getX();
+                            startY = event.getY();
+                            break;
+                    }
+                } else {
+                    // 移动整个矩形
+                    int dx = (int) (event.getX() - startX);
+                    int dy = (int) (event.getY() - startY);
+                    selectionRect.offset(dx, dy);
+                    startX = event.getX();
+                    startY = event.getY();
                 }
+                // 重新绘制
+                invalidate();
                 break;
             case MotionEvent.ACTION_UP:
-//                selectionRect.right = (int) event.getX();
-//                selectionRect.bottom = (int) event.getY();
-//                invalidate();
-//                // 处理选择的矩形区域
-//                MediaProjection mediaProjection = null;
-//                handleScreenCapturePermissionResult(mediaProjection, selectionRect);
-                isResizing = false;
+                Log.e("ACTION_UP", "selectionRect:" + selectionRect.toString());
+                // 停止调整
+                isAdjust = false;
+                // 重置调整方向
+                adjustOrientation = 0;
                 break;
         }
         return true;
