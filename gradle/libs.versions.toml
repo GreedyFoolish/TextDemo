@@ -10,6 +10,7 @@ navigationFragment = "2.8.8"
 navigationUi = "2.8.8"
 gson = "2.8.9"
 firebaseCrashlyticsBuildtools = "3.0.3"
+tessTwo = "9.1.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -22,6 +23,7 @@ navigation-fragment = { group = "androidx.navigation", name = "navigation-fragme
 navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigationUi" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
+tess-two = { group = "com.rmtheis", name = "tess-two", version.ref = "tessTwo" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

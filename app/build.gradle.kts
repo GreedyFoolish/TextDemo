@@ -43,6 +43,7 @@ dependencies {
     implementation(libs.navigation.ui)
     implementation(libs.gson)
     implementation(libs.firebase.crashlytics.buildtools)
+    implementation(libs.tess.two)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
