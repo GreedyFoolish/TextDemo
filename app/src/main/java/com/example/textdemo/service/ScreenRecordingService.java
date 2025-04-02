@@ -8,13 +8,22 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.ImageFormat;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
+import android.media.Image;
+import android.media.ImageReader;
 import android.media.MediaRecorder;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -25,8 +34,11 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.example.textdemo.R;
+import com.googlecode.tesseract.android.TessBaseAPI;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class ScreenRecordingService extends Service {
     // 通知渠道的 ID
@@ -41,6 +53,14 @@ public class ScreenRecordingService extends Service {
     private MediaRecorder mediaRecorder;
     // 虚拟显示
     private VirtualDisplay virtualDisplay;
+    // 图像读取器
+    private ImageReader imageReader;
+    // 图像处理线程
+    private HandlerThread imageHandlerThread;
+    // 图像处理处理
+    private Handler imageHandler;
+    // Tesseract OCR 引擎
+    private TessBaseAPI tessBaseAPI;
 
     @Override
     public void onCreate() {
@@ -130,6 +150,31 @@ public class ScreenRecordingService extends Service {
         // 开始录制
         startRecording();
 
+        // 初始化 Tesseract OCR 引擎
+        tessBaseAPI = new TessBaseAPI();
+        // 指定 Tesseract OCR 引擎的语言
+        tessBaseAPI.init(getFilesDir().getAbsolutePath(), "eng");
+
+        // 初始化图像处理线程
+        imageHandlerThread = new HandlerThread("ImageHandlerThread");
+        // 启动图像处理线程
+        imageHandlerThread.start();
+        // 获取图像处理线程的 Handler
+        imageHandler = new Handler(imageHandlerThread.getLooper());
+
+        // 初始化 ImageReader
+        imageReader = ImageReader.newInstance(1280, 720, ImageFormat.NV21, 2);
+        // 创建一个处理线程
+        imageReader.setOnImageAvailableListener(reader -> {
+            // 获取最新的图像
+            // 确保 ImageReader 的 ImageAvailableListener 被正确设置，并在图像可用时调用 processImage 方法
+            Image image = reader.acquireLatestImage();
+            if (image != null) {
+                processImage(image);
+                image.close();
+            }
+        }, imageHandler);
+
         return START_NOT_STICKY;
     }
 
@@ -211,25 +256,77 @@ public class ScreenRecordingService extends Service {
         }
     }
 
+    /**
+     * 处理图像
+     *
+     * @param image 图像
+     */
+    private void processImage(Image image) {
+        Image.Plane[] planes = image.getPlanes();
+        ByteBuffer buffer = planes[0].getBuffer();
+        byte[] data = new byte[buffer.capacity()];
+        buffer.get(data);
+
+        YuvImage yuvImage = new YuvImage(data, ImageFormat.NV21, image.getWidth(), image.getHeight(), null);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        yuvImage.compressToJpeg(new Rect(0, 0, image.getWidth(), image.getHeight()), 100, out);
+
+        byte[] jpegArray = out.toByteArray();
+        Bitmap bitmap = BitmapFactory.decodeByteArray(jpegArray, 0, jpegArray.length);
+
+        tessBaseAPI.setImage(bitmap);
+        String result = tessBaseAPI.getUTF8Text();
+        Log.d("OCR Result", result);
+
+        // 清理资源
+        tessBaseAPI.clear();
+        bitmap.recycle();
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
         if (mediaProjection != null) {
+            // 停止媒体投影
             mediaProjection.stop();
+            // 释放媒体投影
             mediaProjection = null;
         }
         if (virtualDisplay != null) {
+            // 释放虚拟显示
             virtualDisplay.release();
+            // 释放虚拟显示的资源
             virtualDisplay = null;
         }
         if (mediaRecorder != null) {
             try {
-                mediaRecorder.stop(); // 停止录制
-                mediaRecorder.release(); // 释放资源
+                // 停止媒体记录器
+                mediaRecorder.stop();
+                // 释放媒体记录器
+                mediaRecorder.release();
             } catch (RuntimeException e) {
                 Log.e("ScreenRecordingService", "停止媒体记录器时出错", e);
             }
             mediaRecorder = null;
+        }
+        if (tessBaseAPI != null) {
+            // 停止Tesseract OCR
+            tessBaseAPI.end();
+            tessBaseAPI = null;
+        }
+        if (imageReader != null) {
+            // 关闭图像读取器
+            imageReader.close();
+            imageReader = null;
+        }
+        if (imageHandlerThread != null) {
+            // 关闭图像处理线程
+            imageHandlerThread.quitSafely();
+            imageHandlerThread = null;
+        }
+        if (imageHandler != null) {
+            // 关闭图像处理Handler
+            imageHandler = null;
         }
     }
 
