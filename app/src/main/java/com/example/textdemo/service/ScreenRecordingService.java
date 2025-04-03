@@ -34,6 +34,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.example.textdemo.R;
+import com.example.textdemo.utils.FIleOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
 import java.io.ByteArrayOutputStream;
@@ -150,10 +151,23 @@ public class ScreenRecordingService extends Service {
         // 开始录制
         startRecording();
 
-        // 初始化 Tesseract OCR 引擎
-        tessBaseAPI = new TessBaseAPI();
-        // 指定 Tesseract OCR 引擎的语言
-        tessBaseAPI.init(getFilesDir().getAbsolutePath(), "eng");
+        // 复制 Tesseract OCR 数据
+        FIleOperation.copyTessData(this, new FIleOperation.CopyCallback() {
+            @Override
+            public void onCopyComplete(Context context) {
+                // 初始化 Tesseract OCR 引擎
+                tessBaseAPI = new TessBaseAPI();
+                // 获取 Tesseract OCR 数据路径
+                String tessDataPath = context.getFilesDir().getAbsolutePath();
+                // 指定 Tesseract OCR 引擎的语言
+                tessBaseAPI.init(tessDataPath, "chi_sim");
+            }
+
+            @Override
+            public void onCopyFailed(Exception e) {
+                Log.e("ScreenRecordingService", "Tesseract data copy failed", e);
+            }
+        });
 
         // 初始化图像处理线程
         imageHandlerThread = new HandlerThread("ImageHandlerThread");
