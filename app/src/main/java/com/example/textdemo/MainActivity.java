@@ -1,18 +1,25 @@
 package com.example.textdemo;
 
+import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.media.projection.MediaProjectionManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.ImageView;
 import android.widget.Toast;
 import android.widget.VideoView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -24,6 +31,7 @@ import com.example.textdemo.biz.SelectionRectBiz;
 import com.example.textdemo.databinding.ActivityMainBinding;
 import com.example.textdemo.dao.TextItemDao;
 import com.example.textdemo.utils.CheckPermission;
+import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.FIleOperation;
 import com.example.textdemo.utils.FilePickerHelper;
 import com.example.textdemo.utils.ScreenRecordingHelper;
@@ -33,17 +41,10 @@ import java.util.Arrays;
 public class MainActivity extends AppCompatActivity {
     // 配置应用栏
     private AppBarConfiguration appBarConfiguration;
+
     // 数据绑定对象
     private ActivityMainBinding binding;
 
-    // 请求码：读取外部存储权限
-    private static final int REQUEST_CODE_READ_EXTERNAL_STORAGE = 2001;
-    // 请求码：写入外部存储权限
-    private static final int REQUEST_CODE_WRITE_EXTERNAL_STORAGE = 2002;
-    // 请求码：录制权限
-    private static final int REQUEST_RECORDING_PERMISSIONS = 2003;
-    // 请求码：SYSTEM_ALERT_WINDOW权限
-    private static final int REQUEST_CODE_SYSTEM_ALERT_WINDOW = 2004;
     // 文本项数据访问对象
     private TextItemDao textItemDao;
 
@@ -59,6 +60,9 @@ public class MainActivity extends AppCompatActivity {
     // 屏幕录制活动结果处理程序
     private ActivityResultLauncher<Intent> screenRecordLauncher;
 
+    // 广播接收器
+    private BroadcastReceiver broadcastReceiver;
+
     /**
      * 创建活动时调用的方法
      *
@@ -71,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
         // 检查是否已经授予读取外部存储的权限
         if (!CheckPermission.isReadExternalStorageGranted(this)) {
             // 如果未授予，请求读取外部存储的权限
-            CheckPermission.requestReadExternalStoragePermission(this, REQUEST_CODE_READ_EXTERNAL_STORAGE);
+            CheckPermission.requestReadExternalStoragePermission(this, Constants.REQUEST_CODE_READ_EXTERNAL_STORAGE);
             Log.e("CheckPermission", "请求读取外部存储的权限");
         } else {
             Log.e("CheckPermission", "已授予读取外部存储的权限");
@@ -79,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
         // 检查是否已经授予写入外部存储的权限
         if (!CheckPermission.isWriteExternalStorageGranted(this)) {
             // 如果未授予，请求写入外部存储的权限
-            CheckPermission.requestWriteExternalStoragePermission(this, REQUEST_CODE_WRITE_EXTERNAL_STORAGE);
+            CheckPermission.requestWriteExternalStoragePermission(this, Constants.REQUEST_CODE_WRITE_EXTERNAL_STORAGE);
             Log.e("CheckPermission", "请求写入外部存储的权限");
         } else {
             Log.e("CheckPermission", "已授予写入外部存储的权限");
@@ -87,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         // 检查是否已经授予录制权限
         if (!CheckPermission.isRecordingPermissionGranted(this)) {
             // 如果未授予，请求录制权限
-            CheckPermission.requestRecordingPermission(this, REQUEST_RECORDING_PERMISSIONS);
+            CheckPermission.requestRecordingPermission(this, Constants.REQUEST_RECORDING_PERMISSIONS);
             Log.e("CheckPermission", "请求录制权限");
         } else {
             Log.e("CheckPermission", "已授予录制权限");
@@ -95,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
         // 检查是否已经授予SYSTEM_ALERT_WINDOW权限
         if (!CheckPermission.isSystemAlertWindowPermissionGranted(this)) {
             // 如果未授予，请求SYSTEM_ALERT_WINDOW权限
-            CheckPermission.requestSystemAlertWindowPermission(this, REQUEST_CODE_SYSTEM_ALERT_WINDOW);
+            CheckPermission.requestSystemAlertWindowPermission(this, Constants.REQUEST_CODE_SYSTEM_ALERT_WINDOW);
             Log.e("CheckPermission", "请求SYSTEM_ALERT_WINDOW权限");
         } else {
             Log.e("CheckPermission", "已授予SYSTEM_ALERT_WINDOW权限");
@@ -130,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
         binding.btnOpenFile.setOnClickListener(v -> filePickerHelper.openFile());
 
         // 录屏按钮点击事件
-        binding.btnStartRecording.setOnClickListener(v -> ScreenRecordingBiz.startScreenRecording(this, screenRecordLauncher, REQUEST_RECORDING_PERMISSIONS));
+        binding.btnStartRecording.setOnClickListener(v -> ScreenRecordingBiz.startScreenRecording(this, screenRecordLauncher, Constants.REQUEST_RECORDING_PERMISSIONS));
 
         // 停止录屏按钮点击事件
         binding.btnStopRecording.setOnClickListener(v -> ScreenRecordingBiz.stopScreenRecording(this));
@@ -140,6 +144,36 @@ public class MainActivity extends AppCompatActivity {
 
         // 选择范围按钮点击事件
         binding.selectionRect.setOnClickListener(v -> SelectionRectBiz.addView(this, binding));
+
+        // 注册广播接收器
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerBroadcastReceiver();
+        }
+    }
+
+    /**
+     * 注册广播接收器
+     */
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    private void registerBroadcastReceiver() {
+        broadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                Log.e("onReceive", "广播接收器接收到广播");
+                if ("com.example.textdemo.SCREENSHOT".equals(intent.getAction())) {
+                    Bitmap bitmap = intent.getParcelableExtra("bitmap");
+                    Log.e("onReceive", "广播接收器接收到截图");
+                    if (bitmap != null) {
+                        ImageView imageView = binding.imageView;
+                        imageView.setImageBitmap(bitmap);
+                    }
+                }
+            }
+        };
+        IntentFilter filter = new IntentFilter(Constants.BROADCAST_ACTION);
+        registerReceiver(broadcastReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        Log.e("registerBroadcastReceiver", "注册广播接收器");
     }
 
     /**
@@ -153,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         // 处理读取文件权限请求结果
-        if (requestCode == REQUEST_CODE_READ_EXTERNAL_STORAGE) {
+        if (requestCode == Constants.REQUEST_CODE_READ_EXTERNAL_STORAGE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // 权限已授予
                 Toast.makeText(this, "已获取读取文件权限", Toast.LENGTH_SHORT).show();
@@ -163,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         // 处理写入文件权限请求结果
-        if (requestCode == REQUEST_CODE_WRITE_EXTERNAL_STORAGE) {
+        if (requestCode == Constants.REQUEST_CODE_WRITE_EXTERNAL_STORAGE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Log.e("onRequestPermissionsResult", "写入文件权限请求结果" + grantResults[0]);
                 // 权限已授予
@@ -175,7 +209,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         // 处理录制权限请求结果
-        if (requestCode == REQUEST_RECORDING_PERMISSIONS) {
+        if (requestCode == Constants.REQUEST_RECORDING_PERMISSIONS) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // 权限已授予
                 Toast.makeText(this, "已获取录制权限", Toast.LENGTH_SHORT).show();
@@ -185,7 +219,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         // 处理SYSTEM_ALERT_WINDOW权限请求结果
-        if (requestCode == REQUEST_CODE_SYSTEM_ALERT_WINDOW) {
+        if (requestCode == Constants.REQUEST_CODE_SYSTEM_ALERT_WINDOW) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // 权限已授予
                 Toast.makeText(this, "已获取SYSTEM_ALERT_WINDOW权限", Toast.LENGTH_SHORT).show();

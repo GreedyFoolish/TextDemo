@@ -15,4 +15,5 @@
     <string name="home_tool_three">停止录屏</string>
     <string name="play_recording">播放视频</string>
     <string name="selection_rect">选择范围</string>
+    <string name="image_desc">录屏图像</string>
 </resources>

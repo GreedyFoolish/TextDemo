@@ -34,6 +34,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.example.textdemo.R;
+import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.FIleOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
@@ -177,12 +178,14 @@ public class ScreenRecordingService extends Service {
         imageHandler = new Handler(imageHandlerThread.getLooper());
 
         // 初始化 ImageReader
-        imageReader = ImageReader.newInstance(1280, 720, ImageFormat.NV21, 2);
+        imageReader = ImageReader.newInstance(1280, 720, ImageFormat.YUV_420_888, 2);
         // 创建一个处理线程
         imageReader.setOnImageAvailableListener(reader -> {
             // 获取最新的图像
             // 确保 ImageReader 的 ImageAvailableListener 被正确设置，并在图像可用时调用 processImage 方法
             Image image = reader.acquireLatestImage();
+            Log.e("ScreenRecordingService", reader.toString());
+            Log.e("ScreenRecordingService", "ImageAvailableListener called");
             if (image != null) {
                 processImage(image);
                 image.close();
@@ -288,9 +291,16 @@ public class ScreenRecordingService extends Service {
         byte[] jpegArray = out.toByteArray();
         Bitmap bitmap = BitmapFactory.decodeByteArray(jpegArray, 0, jpegArray.length);
 
+        // 创建 Intent
+        Intent intent = new Intent(Constants.BROADCAST_ACTION);
+        // 将 Bitmap 作为 Intent 的附加数据发送
+        intent.putExtra("bitmap", bitmap);
+        // 发送广播
+        sendBroadcast(intent);
+
         tessBaseAPI.setImage(bitmap);
         String result = tessBaseAPI.getUTF8Text();
-        Log.d("OCR Result", result);
+        Log.e("OCR Result", result);
 
         // 清理资源
         tessBaseAPI.clear();
