@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.media.projection.MediaProjectionManager;
+import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -105,6 +106,10 @@ public class MainActivity extends AppCompatActivity {
             Log.e("CheckPermission", "已授予SYSTEM_ALERT_WINDOW权限");
         }
 
+        // 假设使用 GLSurfaceView 初始化 OpenGL 上下文
+        GLSurfaceView glSurfaceView = new GLSurfaceView(this);
+        glSurfaceView.setEGLContextClientVersion(2); // 设置为 OpenGL ES 2.0
+
         // 初始化数据绑定
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -161,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceive(Context context, Intent intent) {
                 Log.e("onReceive", "广播接收器接收到广播");
-                if ("com.example.textdemo.SCREENSHOT".equals(intent.getAction())) {
+                if (Constants.BROADCAST_ACTION.equals(intent.getAction())) {
                     Bitmap bitmap = intent.getParcelableExtra("bitmap");
                     Log.e("onReceive", "广播接收器接收到截图");
                     if (bitmap != null) {

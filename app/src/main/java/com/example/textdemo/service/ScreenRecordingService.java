@@ -1,17 +1,21 @@
 package com.example.textdemo.service;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
+import android.graphics.SurfaceTexture;
 import android.graphics.YuvImage;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
@@ -27,13 +31,16 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.Pair;
 import android.view.Surface;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 
 import com.example.textdemo.R;
+import com.example.textdemo.utils.CombineSurface;
 import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.FIleOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
@@ -63,12 +70,27 @@ public class ScreenRecordingService extends Service {
     private Handler imageHandler;
     // Tesseract OCR 引擎
     private TessBaseAPI tessBaseAPI;
+    // BroadcastReceiver 用于接收 Bitmap
+    private BroadcastReceiver bitmapReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Bitmap bitmap = intent.getParcelableExtra("bitmap");
+            if (bitmap != null) {
+                // 发送 Bitmap 到 Activity
+                Intent activityIntent = new Intent(Constants.BROADCAST_ACTION);
+                activityIntent.putExtra("bitmap", bitmap);
+                sendBroadcast(activityIntent);
+            }
+        }
+    };
 
     @Override
     public void onCreate() {
         super.onCreate();
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // 创建通知渠道
@@ -143,12 +165,43 @@ public class ScreenRecordingService extends Service {
         // 获取屏幕的密度（每英寸点数，DPI）
         int dpi = displayMetrics.densityDpi;
 
-        // 创建虚拟显示表面
-        createVirtualDisplay(videoFilePath);
-        // 创建虚拟显示
-        virtualDisplay = mediaProjection.createVirtualDisplay("ScreenRecording",
-                width, height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                createVirtualDisplaySurface(), null, null);
+        // 初始化图像处理线程
+        imageHandlerThread = new HandlerThread("ImageHandlerThread");
+        // 启动图像处理线程
+        imageHandlerThread.start();
+        // 获取图像处理线程的 Handler
+        imageHandler = new Handler(imageHandlerThread.getLooper());
+
+        // 初始化 ImageReader
+        imageReader = ImageReader.newInstance(1280, 720, ImageFormat.RGB_565, 2);
+        Log.e("ScreenRecordingService", "ImageReader created with width: " + width + ", height: " + height);
+        // 创建一个处理线程
+        imageReader.setOnImageAvailableListener(reader -> {
+            // 获取最新的图像
+            // 确保 ImageReader 的 ImageAvailableListener 被正确设置，并在图像可用时调用 processImage 方法
+            Image image = reader.acquireLatestImage();
+            Log.e("ScreenRecordingService", reader.toString());
+            Log.e("ScreenRecordingService", "ImageAvailableListener called");
+            if (image != null) {
+                processImage(image);
+                image.close();
+            }
+        }, imageHandler);
+
+        // 初始化 MediaRecorder 和 VirtualDisplay
+        createVirtualDisplay(videoFilePath, displayMetrics);
+        Pair<Surface, Surface> surfaces = createDualSurfaces();
+        Surface recorderSurface = surfaces.first;
+        Surface readerSurface = surfaces.second;
+        try {
+            virtualDisplay = mediaProjection.createVirtualDisplay("ScreenRecording",
+                    width, height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    new CombineSurface(recorderSurface, readerSurface), null, null);
+        } catch (Exception e) {
+            Log.e("ScreenRecordingService", "Failed to create virtual display", e);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
 
         // 开始录制
         startRecording();
@@ -171,27 +224,9 @@ public class ScreenRecordingService extends Service {
             }
         });
 
-        // 初始化图像处理线程
-        imageHandlerThread = new HandlerThread("ImageHandlerThread");
-        // 启动图像处理线程
-        imageHandlerThread.start();
-        // 获取图像处理线程的 Handler
-        imageHandler = new Handler(imageHandlerThread.getLooper());
-
-        // 初始化 ImageReader
-        imageReader = ImageReader.newInstance(1280, 720, ImageFormat.YUV_420_888, 2);
-        // 创建一个处理线程
-        imageReader.setOnImageAvailableListener(reader -> {
-            // 获取最新的图像
-            // 确保 ImageReader 的 ImageAvailableListener 被正确设置，并在图像可用时调用 processImage 方法
-            Image image = reader.acquireLatestImage();
-            Log.e("ScreenRecordingService", reader.toString());
-            Log.e("ScreenRecordingService", "ImageAvailableListener called");
-            if (image != null) {
-                processImage(image);
-                image.close();
-            }
-        }, imageHandler);
+        // 注册 BroadcastReceiver 用于发送 Bitmap
+        IntentFilter filter = new IntentFilter(Constants.BROADCAST_ACTION);
+        registerReceiver(bitmapReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
 
         return START_NOT_STICKY;
     }
@@ -229,9 +264,10 @@ public class ScreenRecordingService extends Service {
     /**
      * 创建虚拟显示
      *
-     * @param videoFilePath 视频文件路径
+     * @param videoFilePath  视频文件路径
+     * @param displayMetrics
      */
-    private void createVirtualDisplay(String videoFilePath) {
+    private void createVirtualDisplay(String videoFilePath, DisplayMetrics displayMetrics) {
         // 创建一个MediaRecorder实例
         mediaRecorder = new MediaRecorder();
         // 设置音频源
@@ -244,6 +280,8 @@ public class ScreenRecordingService extends Service {
         mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
         // 设置视频编码
         mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+        // 设置视频尺寸为屏幕尺寸
+//        mediaRecorder.setVideoSize(displayMetrics.widthPixels, displayMetrics.heightPixels);
         mediaRecorder.setVideoSize(1280, 720);
         // 设置视频编码比特率
         mediaRecorder.setVideoEncodingBitRate(5000000);
@@ -251,14 +289,8 @@ public class ScreenRecordingService extends Service {
         mediaRecorder.setVideoFrameRate(30);
         // 设置输出文件路径
         mediaRecorder.setOutputFile(videoFilePath);
-    }
 
-    /**
-     * 创建虚拟显示的Surface
-     *
-     * @return Surface
-     */
-    private Surface createVirtualDisplaySurface() {
+        // 准备 MediaRecorder
         try {
             mediaRecorder.prepare();
         } catch (IOException e) {
@@ -266,9 +298,29 @@ public class ScreenRecordingService extends Service {
             // 处理异常
             Log.e("ScreenRecordingService", "MediaRecorder prepare() failed", e);
             Toast.makeText(this, "MediaRecorder prepare() failed", Toast.LENGTH_SHORT).show();
+            // 停止服务
+            stopSelf();
         }
+    }
 
-        return mediaRecorder.getSurface();
+    /**
+     * 创建虚拟显示的Surface
+     *
+     * @return Surface
+     */
+    private Pair<Surface, Surface> createDualSurfaces() {
+        // 创建 ImageReader
+        imageReader = ImageReader.newInstance(1280, 720, ImageFormat.YUV_420_888, 2);
+        imageReader.setOnImageAvailableListener(reader -> {
+            Image image = reader.acquireLatestImage();
+            if (image != null) {
+                processImage(image);
+                image.close();
+            }
+        }, imageHandler);
+
+        // 返回两个 Surface
+        return new Pair<>(mediaRecorder.getSurface(), imageReader.getSurface());
     }
 
     /**
@@ -286,17 +338,28 @@ public class ScreenRecordingService extends Service {
      * @param image 图像
      */
     private void processImage(Image image) {
+        if (image == null || image.getFormat() != ImageFormat.YUV_420_888) {
+            return;
+        }
+
+        // 获取 YUV 数据
         Image.Plane[] planes = image.getPlanes();
-        ByteBuffer buffer = planes[0].getBuffer();
-        byte[] data = new byte[buffer.capacity()];
-        buffer.get(data);
+        ByteBuffer yBuffer = planes[0].getBuffer(); // Y
+        ByteBuffer uBuffer = planes[1].getBuffer(); // U
+        ByteBuffer vBuffer = planes[2].getBuffer(); // V
 
-        YuvImage yuvImage = new YuvImage(data, ImageFormat.NV21, image.getWidth(), image.getHeight(), null);
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        yuvImage.compressToJpeg(new Rect(0, 0, image.getWidth(), image.getHeight()), 100, out);
+        int ySize = yBuffer.remaining();
+        int uSize = uBuffer.remaining();
+        int vSize = vBuffer.remaining();
 
-        byte[] jpegArray = out.toByteArray();
-        Bitmap bitmap = BitmapFactory.decodeByteArray(jpegArray, 0, jpegArray.length);
+
+        byte[] nv21 = new byte[ySize + uSize + vSize];
+        yBuffer.get(nv21, 0, ySize);
+        vBuffer.get(nv21, ySize, vSize); // V first
+        uBuffer.get(nv21, ySize + vSize, uSize); // U last
+
+        // 转换为 Bitmap
+        Bitmap bitmap = NV21ToBitmap(nv21, image.getWidth(), image.getHeight());
 
         // 创建 Intent
         Intent intent = new Intent(Constants.BROADCAST_ACTION);
@@ -305,6 +368,7 @@ public class ScreenRecordingService extends Service {
         // 发送广播
         sendBroadcast(intent);
 
+        // 执行 OCR
         tessBaseAPI.setImage(bitmap);
         String result = tessBaseAPI.getUTF8Text();
         Log.e("OCR Result", result);
@@ -312,6 +376,16 @@ public class ScreenRecordingService extends Service {
         // 清理资源
         tessBaseAPI.clear();
         bitmap.recycle();
+    }
+
+
+    // 工具方法：将 NV21 数据转换为 Bitmap
+    private Bitmap NV21ToBitmap(byte[] nv21, int width, int height) {
+        YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, width, height, null);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        yuvImage.compressToJpeg(new Rect(0, 0, width, height), 100, out);
+        byte[] imageBytes = out.toByteArray();
+        return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
     }
 
     @Override
@@ -359,6 +433,9 @@ public class ScreenRecordingService extends Service {
             // 关闭图像处理Handler
             imageHandler = null;
         }
+
+        // 注销 BroadcastReceiver
+        unregisterReceiver(bitmapReceiver);
     }
 
     @Nullable
