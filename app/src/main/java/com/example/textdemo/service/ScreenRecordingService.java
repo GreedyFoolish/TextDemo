@@ -95,7 +95,7 @@ public class ScreenRecordingService extends Service {
             StringBuilder keys = new StringBuilder();
             for (String key : extras.keySet()) {
                 keys.append(key).append(", ");
-                Log.e("Intent getExtras", "key:" + key + " value:" + extras.get(key));
+                // Log.e("Intent getExtras", "key:" + key + " value:" + extras.get(key));
             }
         }
 
@@ -107,8 +107,8 @@ public class ScreenRecordingService extends Service {
             return START_NOT_STICKY;
         }
 
-        Log.e("mediaProjectionData", mediaProjectionData.toString());
-        Log.e("videoFilePath", videoFilePath);
+        // Log.e("mediaProjectionData", mediaProjectionData.toString());
+        // Log.e("videoFilePath", videoFilePath);
 
         // 初始化媒体投影管理器
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
@@ -117,9 +117,8 @@ public class ScreenRecordingService extends Service {
          在 Android 13 (API 33) 及更高版本中，MediaProjection 的 Intent 结构有所变化。具体来说，MediaProjection 的 Bundle 键从
          android.media.projection.extra.MEDIA_PROJECTION变为 android.media.projection.extra.EXTRA_MEDIA_PROJECTION。
          */
+        // 获取媒体投影对象
         mediaProjection = mediaProjectionManager.getMediaProjection(Activity.RESULT_OK, mediaProjectionData);
-
-        Log.e("mediaProjection", mediaProjection.toString());
 
         // 注册 MediaProjection 的回调
         mediaProjection.registerCallback(new MediaProjection.Callback() {
@@ -144,10 +143,12 @@ public class ScreenRecordingService extends Service {
         // 获取屏幕的密度（每英寸点数，DPI）
         int dpi = displayMetrics.densityDpi;
 
+        // 创建虚拟显示表面
+        createVirtualDisplay(videoFilePath);
         // 创建虚拟显示
         virtualDisplay = mediaProjection.createVirtualDisplay("ScreenRecording",
                 width, height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                createVirtualDisplaySurface(videoFilePath), null, null);
+                createVirtualDisplaySurface(), null, null);
 
         // 开始录制
         startRecording();
@@ -229,9 +230,8 @@ public class ScreenRecordingService extends Service {
      * 创建虚拟显示
      *
      * @param videoFilePath 视频文件路径
-     * @return Surface
      */
-    private Surface createVirtualDisplaySurface(String videoFilePath) {
+    private void createVirtualDisplay(String videoFilePath) {
         // 创建一个MediaRecorder实例
         mediaRecorder = new MediaRecorder();
         // 设置音频源
@@ -251,7 +251,14 @@ public class ScreenRecordingService extends Service {
         mediaRecorder.setVideoFrameRate(30);
         // 设置输出文件路径
         mediaRecorder.setOutputFile(videoFilePath);
+    }
 
+    /**
+     * 创建虚拟显示的Surface
+     *
+     * @return Surface
+     */
+    private Surface createVirtualDisplaySurface() {
         try {
             mediaRecorder.prepare();
         } catch (IOException e) {
