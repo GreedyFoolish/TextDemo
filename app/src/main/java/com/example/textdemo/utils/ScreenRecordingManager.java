@@ -72,7 +72,7 @@ public class ScreenRecordingManager {
                             StringBuilder keys = new StringBuilder();
                             for (String key : extras.keySet()) {
                                 keys.append(key).append(", ");
-                                Log.e("Intent getExtras", "key:" + key + " value:" + extras.get(key));
+                                // Log.e("Intent getExtras", "key:" + key + " value:" + extras.get(key));
                             }
                         }
                         // 创建前台服务
@@ -83,8 +83,8 @@ public class ScreenRecordingManager {
                         serviceIntent.putExtra("mediaProjectionData", data);
                         // 添加文件路径参数
                         serviceIntent.putExtra("videoPath", videoPath);
-                        Log.e("Intent data", String.valueOf(data));
-                        Log.e("Intent videoPath", videoPath);
+                        // Log.e("Intent data", String.valueOf(data));
+                        // Log.e("Intent videoPath", videoPath);
                         // 启动服务
                         activity.startService(serviceIntent);
                     }
