@@ -142,13 +142,6 @@ public class ScreenRecordingService extends Service {
         // 获取屏幕的密度（每英寸点数，DPI）
         int dpi = displayMetrics.densityDpi;
 
-        // 创建虚拟显示表面
-        createVirtualDisplay(videoFilePath);
-        // 创建虚拟显示
-        virtualDisplay = mediaProjection.createVirtualDisplay("ScreenRecording",
-                width, height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                createVirtualDisplaySurface(), null, null);
-
         // 开始录制
         startRecording();
 
@@ -178,17 +171,26 @@ public class ScreenRecordingService extends Service {
         imageHandler = new Handler(imageHandlerThread.getLooper());
 
         // 初始化 ImageReader
-        imageReader = ImageReader.newInstance(1280, 720, ImageFormat.NV21, 2);
+        imageReader = ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 2);
+        Log.e("ImageReader", "ImageReader created");
         // 创建一个处理线程
         imageReader.setOnImageAvailableListener(reader -> {
             // 获取最新的图像
             // 确保 ImageReader 的 ImageAvailableListener 被正确设置，并在图像可用时调用 processImage 方法
+            Log.e("ImageReader", "ImageAvailableListener called");
             Image image = reader.acquireLatestImage();
             if (image != null) {
                 processImage(image);
                 image.close();
             }
         }, imageHandler);
+
+        // 创建虚拟显示表面
+        createVirtualDisplay(videoFilePath);
+        // 创建虚拟显示
+        virtualDisplay = mediaProjection.createVirtualDisplay("ScreenRecording",
+                width, height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                imageReader.getSurface(), null, null);
 
         return START_NOT_STICKY;
     }
@@ -243,11 +245,15 @@ public class ScreenRecordingService extends Service {
         mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         mediaRecorder.setVideoSize(1280, 720);
         // 设置视频编码比特率
-        mediaRecorder.setVideoEncodingBitRate(5000000);
+        mediaRecorder.setVideoEncodingBitRate(2000000);
         // 设置视频帧率
-        mediaRecorder.setVideoFrameRate(30);
+        mediaRecorder.setVideoFrameRate(15);
         // 设置输出文件路径
         mediaRecorder.setOutputFile(videoFilePath);
+        // 设置采样率为44100Hz
+        mediaRecorder.setAudioSamplingRate(44100);
+        // 设置比特率为192kbps
+        mediaRecorder.setAudioEncodingBitRate(192000);
     }
 
     /**
@@ -284,11 +290,31 @@ public class ScreenRecordingService extends Service {
      */
     private void processImage(Image image) {
         Image.Plane[] planes = image.getPlanes();
-        ByteBuffer buffer = planes[0].getBuffer();
-        byte[] data = new byte[buffer.capacity()];
-        buffer.get(data);
+        ByteBuffer yBuffer = planes[0].getBuffer(); // Y 分量
+        ByteBuffer uBuffer = planes[1].getBuffer(); // U 分量
+        ByteBuffer vBuffer = planes[2].getBuffer(); // V 分量
 
-        YuvImage yuvImage = new YuvImage(data, ImageFormat.NV21, image.getWidth(), image.getHeight(), null);
+        int ySize = yBuffer.remaining();
+        int uSize = uBuffer.remaining();
+        int vSize = vBuffer.remaining();
+
+        byte[] yData = new byte[ySize];
+        byte[] uData = new byte[uSize];
+        byte[] vData = new byte[vSize];
+
+        yBuffer.get(yData);
+        uBuffer.get(uData);
+        vBuffer.get(vData);
+
+        // 将 YUV 数据转换为 JPEG 或 Bitmap
+        YuvImage yuvImage = new YuvImage(
+                concatenateYUV(yData, uData, vData),
+                ImageFormat.NV21, // 注意：这里需要确保格式一致
+                image.getWidth(),
+                image.getHeight(),
+                null
+        );
+
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         yuvImage.compressToJpeg(new Rect(0, 0, image.getWidth(), image.getHeight()), 100, out);
 
@@ -299,9 +325,26 @@ public class ScreenRecordingService extends Service {
         String result = tessBaseAPI.getUTF8Text();
         Log.d("OCR Result", result);
 
+        // 处理 OCR 结果
+        handleOCRResult(result);
+
         // 清理资源
         tessBaseAPI.clear();
         bitmap.recycle();
+    }
+
+    private byte[] concatenateYUV(byte[] yData, byte[] uData, byte[] vData) {
+        byte[] yuvData = new byte[yData.length + uData.length + vData.length];
+        System.arraycopy(yData, 0, yuvData, 0, yData.length);
+        System.arraycopy(uData, 0, yuvData, yData.length, uData.length);
+        System.arraycopy(vData, 0, yuvData, yData.length + uData.length, vData.length);
+        return yuvData;
+    }
+
+    private void handleOCRResult(String result) {
+        // 根据需求处理 OCR 结果
+        // 例如：保存到文件、显示在 UI 上等
+        Log.d("OCR Result", "Processed Result: " + result);
     }
 
     @Override
