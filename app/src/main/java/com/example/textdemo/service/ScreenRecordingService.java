@@ -15,7 +15,6 @@ import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.Image;
 import android.media.ImageReader;
-import android.media.MediaRecorder;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
@@ -30,6 +29,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.example.textdemo.R;
+import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.FIleOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
@@ -44,8 +44,6 @@ public class ScreenRecordingService extends Service {
     private MediaProjectionManager mediaProjectionManager;
     // 媒体投影对象
     private MediaProjection mediaProjection;
-    // 媒体录制器
-    private MediaRecorder mediaRecorder;
     // 虚拟显示
     private VirtualDisplay virtualDisplay;
     // 图像读取器
@@ -119,7 +117,7 @@ public class ScreenRecordingService extends Service {
             @Override
             public void onStop() {
                 super.onStop();
-                Log.e("ScreenCapture", "MediaProjection stopped");
+                Log.e("ScreenCapture", "MediaProjection 停止服务");
                 if (virtualDisplay != null) {
                     virtualDisplay.release();
                     virtualDisplay = null;
@@ -180,6 +178,16 @@ public class ScreenRecordingService extends Service {
         virtualDisplay = mediaProjection.createVirtualDisplay("ScreenRecording",
                 width, height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 imageReader.getSurface(), null, null);
+
+        // 检查是否是停止媒体投影的意图
+        if (Constants.STOP_MEDIA_PROJECTION.equals(intent.getAction())) {
+            // 停止媒体投影
+            stopMediaProjection();
+            // 停止服务
+            stopSelf();
+            // 返回 START_NOT_STICKY
+            return START_NOT_STICKY;
+        }
 
         return START_NOT_STICKY;
     }
@@ -277,9 +285,10 @@ public class ScreenRecordingService extends Service {
         Log.d("OCR Result", "Processed Result: " + result);
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
+    /**
+     * 停止媒体投影和释放相关资源
+     */
+    private void stopMediaProjection() {
         if (mediaProjection != null) {
             // 停止媒体投影
             mediaProjection.stop();
@@ -292,36 +301,35 @@ public class ScreenRecordingService extends Service {
             // 释放虚拟显示的资源
             virtualDisplay = null;
         }
-        if (mediaRecorder != null) {
-            try {
-                // 停止媒体记录器
-                mediaRecorder.stop();
-                // 释放媒体记录器
-                mediaRecorder.release();
-            } catch (RuntimeException e) {
-                Log.e("ScreenRecordingService", "停止媒体记录器时出错", e);
-            }
-            mediaRecorder = null;
-        }
         if (tessBaseAPI != null) {
             // 停止Tesseract OCR
             tessBaseAPI.end();
+            // 释放Tesseract OCR
             tessBaseAPI = null;
         }
         if (imageReader != null) {
             // 关闭图像读取器
             imageReader.close();
+            // 释放图像读取器
             imageReader = null;
         }
         if (imageHandlerThread != null) {
             // 关闭图像处理线程
             imageHandlerThread.quitSafely();
+            // 释放图像处理线程
             imageHandlerThread = null;
         }
         if (imageHandler != null) {
-            // 关闭图像处理Handler
+            // 释放图像处理线程
             imageHandler = null;
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // 停止媒体投影和释放相关资源
+        stopMediaProjection();
     }
 
     @Nullable

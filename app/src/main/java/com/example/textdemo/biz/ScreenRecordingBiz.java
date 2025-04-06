@@ -14,6 +14,7 @@ import androidx.activity.result.ActivityResultLauncher;
 
 import com.example.textdemo.service.ScreenRecordingService;
 import com.example.textdemo.utils.CheckPermission;
+import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.FIleOperation;
 
 public class ScreenRecordingBiz {
@@ -45,8 +46,10 @@ public class ScreenRecordingBiz {
     public static void stopScreenRecording(Activity context) {
         // 创建一个停止ScreenRecordingService的Intent
         Intent serviceIntent = new Intent(context, ScreenRecordingService.class);
-        // 停止ScreenRecordingService
-        context.stopService(serviceIntent);
+        // 设置Intent的action为STOP_MEDIA_PROJECTION
+        serviceIntent.setAction(Constants.STOP_MEDIA_PROJECTION);
+        // 启动停止ScreenRecordingService的Intent
+        context.startService(serviceIntent);
         Log.e("stopScreenRecording", "停止屏幕录制");
     }
 
