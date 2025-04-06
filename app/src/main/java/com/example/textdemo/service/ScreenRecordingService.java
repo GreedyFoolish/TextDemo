@@ -1,5 +1,6 @@
 package com.example.textdemo.service;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -9,10 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.ImageFormat;
-import android.graphics.Rect;
-import android.graphics.YuvImage;
+import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.Image;
@@ -27,8 +25,6 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.Surface;
-import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -37,8 +33,6 @@ import com.example.textdemo.R;
 import com.example.textdemo.utils.FIleOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class ScreenRecordingService extends Service {
@@ -68,6 +62,7 @@ public class ScreenRecordingService extends Service {
         super.onCreate();
     }
 
+    @SuppressLint("WrongConstant")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // 创建通知渠道
@@ -142,9 +137,6 @@ public class ScreenRecordingService extends Service {
         // 获取屏幕的密度（每英寸点数，DPI）
         int dpi = displayMetrics.densityDpi;
 
-        // 开始录制
-        startRecording();
-
         // 复制 Tesseract OCR 数据
         FIleOperation.copyTessData(this, new FIleOperation.CopyCallback() {
             @Override
@@ -171,13 +163,12 @@ public class ScreenRecordingService extends Service {
         imageHandler = new Handler(imageHandlerThread.getLooper());
 
         // 初始化 ImageReader
-        imageReader = ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 2);
-        Log.e("ImageReader", "ImageReader created");
+        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
+
         // 创建一个处理线程
         imageReader.setOnImageAvailableListener(reader -> {
             // 获取最新的图像
-            // 确保 ImageReader 的 ImageAvailableListener 被正确设置，并在图像可用时调用 processImage 方法
-            Log.e("ImageReader", "ImageAvailableListener called");
+            Log.e("ImageReader", "ImageAvailableListener 已调用");
             Image image = reader.acquireLatestImage();
             if (image != null) {
                 processImage(image);
@@ -185,8 +176,6 @@ public class ScreenRecordingService extends Service {
             }
         }, imageHandler);
 
-        // 创建虚拟显示表面
-        createVirtualDisplay(videoFilePath);
         // 创建虚拟显示
         virtualDisplay = mediaProjection.createVirtualDisplay("ScreenRecording",
                 width, height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
@@ -226,119 +215,60 @@ public class ScreenRecordingService extends Service {
     }
 
     /**
-     * 创建虚拟显示
-     *
-     * @param videoFilePath 视频文件路径
-     */
-    private void createVirtualDisplay(String videoFilePath) {
-        // 创建一个MediaRecorder实例
-        mediaRecorder = new MediaRecorder();
-        // 设置音频源
-        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        // 设置视频源
-        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
-        // 设置输出格式
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        // 设置音频编码
-        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        // 设置视频编码
-        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-        mediaRecorder.setVideoSize(1280, 720);
-        // 设置视频编码比特率
-        mediaRecorder.setVideoEncodingBitRate(2000000);
-        // 设置视频帧率
-        mediaRecorder.setVideoFrameRate(15);
-        // 设置输出文件路径
-        mediaRecorder.setOutputFile(videoFilePath);
-        // 设置采样率为44100Hz
-        mediaRecorder.setAudioSamplingRate(44100);
-        // 设置比特率为192kbps
-        mediaRecorder.setAudioEncodingBitRate(192000);
-    }
-
-    /**
-     * 创建虚拟显示的Surface
-     *
-     * @return Surface
-     */
-    private Surface createVirtualDisplaySurface() {
-        try {
-            mediaRecorder.prepare();
-        } catch (IOException e) {
-            e.printStackTrace();
-            // 处理异常
-            Log.e("ScreenRecordingService", "MediaRecorder prepare() failed", e);
-            Toast.makeText(this, "MediaRecorder prepare() failed", Toast.LENGTH_SHORT).show();
-        }
-
-        return mediaRecorder.getSurface();
-    }
-
-    /**
-     * 开始录制视频
-     */
-    private void startRecording() {
-        if (mediaRecorder != null) {
-            mediaRecorder.start();
-        }
-    }
-
-    /**
      * 处理图像
      *
      * @param image 图像
      */
     private void processImage(Image image) {
+        // 获取图像平面
         Image.Plane[] planes = image.getPlanes();
-        ByteBuffer yBuffer = planes[0].getBuffer(); // Y 分量
-        ByteBuffer uBuffer = planes[1].getBuffer(); // U 分量
-        ByteBuffer vBuffer = planes[2].getBuffer(); // V 分量
+        if (planes.length != 1) {
+            Log.e("processImage", "错误的图像平面数量：" + planes.length);
+            image.close();
+            return;
+        }
 
-        int ySize = yBuffer.remaining();
-        int uSize = uBuffer.remaining();
-        int vSize = vBuffer.remaining();
+        // 获取图像数据
+        ByteBuffer buffer = planes[0].getBuffer();
+        // 创建字节数组
+        byte[] data = new byte[buffer.remaining()];
+        //  将数据从缓冲区复制到字节数组
+        buffer.get(data);
 
-        byte[] yData = new byte[ySize];
-        byte[] uData = new byte[uSize];
-        byte[] vData = new byte[vSize];
+        // 创建 Bitmap
+        Bitmap bitmap = Bitmap.createBitmap(image.getWidth(), image.getHeight(), Bitmap.Config.ARGB_8888);
+        // 将数据复制到 Bitmap
+        bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(data));
 
-        yBuffer.get(yData);
-        uBuffer.get(uData);
-        vBuffer.get(vData);
+        // 指定区域的坐标（左上角和右下角）
+        // 左上角 x 坐标
+        int left = 0;
+        // 左上角 y 坐标
+        int top = 0;
+        // 右下角 x 坐标
+        int right = 300;
+        // 右下角 y 坐标
+        int bottom = 300;
 
-        // 将 YUV 数据转换为 JPEG 或 Bitmap
-        YuvImage yuvImage = new YuvImage(
-                concatenateYUV(yData, uData, vData),
-                ImageFormat.NV21, // 注意：这里需要确保格式一致
-                image.getWidth(),
-                image.getHeight(),
-                null
-        );
+        // 裁剪指定区域的图像
+        Bitmap croppedBitmap = Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top);
 
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        yuvImage.compressToJpeg(new Rect(0, 0, image.getWidth(), image.getHeight()), 100, out);
-
-        byte[] jpegArray = out.toByteArray();
-        Bitmap bitmap = BitmapFactory.decodeByteArray(jpegArray, 0, jpegArray.length);
-
-        tessBaseAPI.setImage(bitmap);
+        // 使用 Tesseract OCR 进行处理
+        tessBaseAPI.setImage(croppedBitmap);
         String result = tessBaseAPI.getUTF8Text();
-        Log.d("OCR Result", result);
+        Log.e("OCR Result", result);
 
         // 处理 OCR 结果
         handleOCRResult(result);
 
         // 清理资源
         tessBaseAPI.clear();
+        // 回收 Bitmap
         bitmap.recycle();
-    }
-
-    private byte[] concatenateYUV(byte[] yData, byte[] uData, byte[] vData) {
-        byte[] yuvData = new byte[yData.length + uData.length + vData.length];
-        System.arraycopy(yData, 0, yuvData, 0, yData.length);
-        System.arraycopy(uData, 0, yuvData, yData.length, uData.length);
-        System.arraycopy(vData, 0, yuvData, yData.length + uData.length, vData.length);
-        return yuvData;
+        // 回收裁剪后的 Bitmap
+        croppedBitmap.recycle();
+        // 关闭图像
+        image.close();
     }
 
     private void handleOCRResult(String result) {
