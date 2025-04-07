@@ -2,6 +2,8 @@ package com.example.textdemo.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -17,6 +19,9 @@ import androidx.core.content.ContextCompat;
 import com.example.textdemo.R;
 import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.OffsetUtils;
+import com.example.textdemo.utils.RectDatabaseHelper;
+
+import java.util.Objects;
 
 /**
  * 屏幕选择视图，用于用户选择屏幕区域进行捕获
@@ -27,6 +32,8 @@ public class ScreenSelectionView extends View {
     private Context context;
     // 画笔
     private Paint paint;
+    // 数据库操作
+    RectDatabaseHelper dbHelper;
     // 选择区域
     private Rect selectionRect;
     // 是否正在调整
@@ -76,8 +83,23 @@ public class ScreenSelectionView extends View {
         paint.setStyle(Paint.Style.STROKE);
         // 设置画笔宽度
         paint.setStrokeWidth(5);
-        // 设置选择区域
-        selectionRect = new Rect(100, 100, 300, 300);
+        // 初始化数据库操作
+        dbHelper = new RectDatabaseHelper(context);
+        // 获取数据库
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        // 获取列名
+        String[] columns = {RectDatabaseHelper.getColumnId()};
+        // 创建游标
+        @SuppressLint("Recycle") Cursor cursor = db.query(RectDatabaseHelper.getTABLE_RECTANGLES(), columns, null, null, null, null, null);
+        // 判断表中是否有数据
+        if (cursor.getCount() == 0) {
+            // 若表中无数据，则初始化一条数据
+            dbHelper.insertInitialData();
+        }
+        // 从数据库中获取保存的矩形位置信息
+        Rect savedRect = dbHelper.getRectangle(1);
+        // 设置选择区域，默认为100,100,400,400
+        selectionRect = Objects.requireNonNullElseGet(savedRect, () -> new Rect(100, 100, 400, 400));
         // 获取按钮组的位置
         int left = selectionRect.right - Constants.BUTTON_NORMAL_SIZE * 4 - Constants.BUTTON_SPACE;
         int top = selectionRect.bottom + Constants.BUTTON_SPACE;
@@ -249,6 +271,8 @@ public class ScreenSelectionView extends View {
                 Log.e("ACTION_UP", "selectionRect:" + selectionRect.toString());
                 // 重置调整方向
                 adjustOrientation = 0;
+                // 更新数据库中保存的矩形位置信息
+                dbHelper.updateRectangle(1, selectionRect.left, selectionRect.top, selectionRect.right, selectionRect.bottom);
                 break;
         }
         return true;
