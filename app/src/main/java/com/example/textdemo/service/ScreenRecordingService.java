@@ -96,26 +96,13 @@ public class ScreenRecordingService extends Service {
             return START_NOT_STICKY;
         }
 
-        // 检查 Extras 内容
-        Bundle extras = mediaProjectionData.getExtras();
-        if (extras != null) {
-            StringBuilder keys = new StringBuilder();
-            for (String key : extras.keySet()) {
-                keys.append(key).append(", ");
-                // Log.e("Intent getExtras", "key:" + key + " value:" + extras.get(key));
-            }
-        }
-
         // 获取文件路径参数
         String videoFilePath = intent.getStringExtra("videoPath");
         if (videoFilePath == null) {
             Log.e("onStartCommand", "videoFilePath is null");
-            stopSelf(); // 停止服务
+            stopSelf();
             return START_NOT_STICKY;
         }
-
-        // Log.e("mediaProjectionData", mediaProjectionData.toString());
-        // Log.e("videoFilePath", videoFilePath);
 
         // 初始化媒体投影管理器
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
@@ -133,11 +120,7 @@ public class ScreenRecordingService extends Service {
             public void onStop() {
                 super.onStop();
                 Log.e("ScreenCapture", "MediaProjection 停止服务");
-                if (virtualDisplay != null) {
-                    virtualDisplay.release();
-                    virtualDisplay = null;
-                }
-                mediaProjection = null;
+                stopMediaProjection();
             }
         }, null);
 
@@ -177,16 +160,11 @@ public class ScreenRecordingService extends Service {
 
         // 初始化 ImageReader
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
-
-        // 创建一个处理线程
+        // 设置 ImageReader 的监听器
         imageReader.setOnImageAvailableListener(reader -> {
-            // 获取最新的图像
             Log.e("ImageReader", "ImageAvailableListener 已调用");
-            Image image = reader.acquireLatestImage();
-            if (image != null) {
-                processImage(image);
-                image.close();
-            }
+            // 处理图像
+            processImage(reader.acquireLatestImage());
         }, imageHandler);
 
         // 创建虚拟显示
@@ -258,9 +236,11 @@ public class ScreenRecordingService extends Service {
             //  将数据从缓冲区复制到字节数组
             buffer.get(data);
 
-            // 创建 Bitmap
-            bitmap = Bitmap.createBitmap(image.getWidth(), image.getHeight(), Bitmap.Config.ARGB_8888);
-            // 将数据复制到 Bitmap
+            if (bitmap == null || bitmap.isRecycled()) {
+                // 创建位图
+                bitmap = Bitmap.createBitmap(image.getWidth(), image.getHeight(), Bitmap.Config.ARGB_8888);
+            }
+            // 将数据复制到位图中
             bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(data));
 
             // 指定区域的坐标（左上角和右下角）
@@ -269,13 +249,14 @@ public class ScreenRecordingService extends Service {
             // 左上角 y 坐标
             int top = 0;
             // 右下角 x 坐标
-            int right = 300;
+            int right = Math.min(300, image.getWidth());
             // 右下角 y 坐标
-            int bottom = 300;
+            int bottom = Math.min(300, image.getHeight());
 
-            // 裁剪指定区域的图像
-            croppedBitmap = Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top);
-
+            if (croppedBitmap == null || croppedBitmap.isRecycled()) {
+                // 裁剪位图
+                croppedBitmap = Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top);
+            }
 
             if (tessBaseAPI != null) {
                 // 使用 Tesseract OCR 进行处理
@@ -292,12 +273,6 @@ public class ScreenRecordingService extends Service {
             if (image != null) {
                 image.close();
             }
-            if (bitmap != null && !bitmap.isRecycled()) {
-                bitmap.recycle();
-            }
-            if (croppedBitmap != null && !croppedBitmap.isRecycled()) {
-                croppedBitmap.recycle();
-            }
         }
     }
 
@@ -310,7 +285,7 @@ public class ScreenRecordingService extends Service {
     /**
      * 停止媒体投影和释放相关资源
      */
-    private void stopMediaProjection() {
+    private synchronized void stopMediaProjection() {
         if (mediaProjection != null) {
             // 停止媒体投影
             mediaProjection.stop();
@@ -347,11 +322,18 @@ public class ScreenRecordingService extends Service {
             // 释放图像处理线程
             imageHandlerThread = null;
         }
-        if (imageHandler != null) {
-            // 停止图像处理线程
-            imageHandler.removeCallbacksAndMessages(null);
-            // 释放图像处理线程
-            imageHandler = null;
+        if (bitmap != null && !bitmap.isRecycled()) {
+            // 释放位图并回收内存
+            bitmap.recycle();
+            // 将位图设置为 null
+            bitmap = null;
+        }
+
+        if (croppedBitmap != null && !croppedBitmap.isRecycled()) {
+            // 释放裁剪位图并回收内存
+            croppedBitmap.recycle();
+            // 将裁剪位图设置为 null
+            croppedBitmap = null;
         }
     }
 
