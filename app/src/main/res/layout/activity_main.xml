@@ -34,23 +34,10 @@
             android:text="@string/home_tool_three" />
 
         <Button
-            android:id="@+id/play_recording"
-            style="?android:attr/buttonBarButtonStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/play_recording" />
-
-        <Button
             android:id="@+id/selection_rect"
             style="?android:attr/buttonBarButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/selection_rect" />
     </LinearLayout>
-
-    <VideoView
-        android:id="@+id/videoView"
-        style="?android:attr/buttonBarButtonStyle"
-        android:layout_width="match_parent"
-        android:layout_height="200dp" />
 </LinearLayout>

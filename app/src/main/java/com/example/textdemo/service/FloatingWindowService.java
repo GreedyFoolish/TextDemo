@@ -45,7 +45,7 @@ public class FloatingWindowService extends Service {
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 // 匹配父容器的宽度
                 WindowManager.LayoutParams.MATCH_PARENT,
-                // 浮窗高度为屏幕高度减去100dp
+                // 浮窗高度为屏幕高度减去200dp
                 windowHeight,
                 // 显示在应用顶部
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,

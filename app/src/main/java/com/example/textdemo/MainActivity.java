@@ -1,15 +1,12 @@
 package com.example.textdemo;
 
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.media.projection.MediaProjectionManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
-import android.widget.VideoView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
@@ -43,9 +40,6 @@ public class MainActivity extends AppCompatActivity {
 
     // 文件选择器辅助工具
     private FilePickerHelper filePickerHelper;
-
-    // 媒体投影管理器
-    private MediaProjectionManager mediaProjectionManager;
 
     // 录制视频文件路径
     private String videoPath;
@@ -105,12 +99,6 @@ public class MainActivity extends AppCompatActivity {
         // 初始化文件选择器辅助工具
         filePickerHelper = new FilePickerHelper(this, textItemDao);
 
-        // 初始化媒体投影管理器
-        mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-
-        // 初始化视频播放控件
-        VideoView videoView = binding.videoView;
-
         // 初始化视频文件的路径
         videoPath = FIleOperation.getVideoFilePath();
 
@@ -128,9 +116,6 @@ public class MainActivity extends AppCompatActivity {
 
         // 停止录屏按钮点击事件
         binding.btnStopRecording.setOnClickListener(v -> ScreenRecordingBiz.stopScreenRecording(this));
-
-        // 播放录屏按钮点击事件
-        binding.playRecording.setOnClickListener(v -> ScreenRecordingBiz.playRecording(this, videoView));
 
         // 选择范围按钮点击事件
         binding.selectionRect.setOnClickListener(v -> SelectionRectBiz.addView(this, binding));

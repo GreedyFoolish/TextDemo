@@ -12,7 +12,10 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 
+import com.example.textdemo.R;
+import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.OffsetUtils;
 
 /**
@@ -27,11 +30,21 @@ public class ScreenSelectionView extends View {
     // 选择区域
     private Rect selectionRect;
     // 是否正在调整
-    private boolean isAdjust = false;
+    private boolean isAdjust = true;
     // 调整方位
     private int adjustOrientation = 0;
     // 开始位置
     private float startX, startY;
+    // 按钮组
+    private Rect buttonGroupRect;
+    // 按钮1：锁定，调整
+    private Rect button1Rect;
+    // 按钮2：识别，暂停
+    private Rect button2Rect;
+    // 按钮1是否按下
+    private boolean button1Pressed = false;
+    // 按钮2是否按下
+    private boolean button2Pressed = false;
 
     public ScreenSelectionView(Context context) {
         super(context);
@@ -65,14 +78,84 @@ public class ScreenSelectionView extends View {
         paint.setStrokeWidth(5);
         // 设置选择区域
         selectionRect = new Rect(100, 100, 300, 300);
+        // 获取按钮组的位置
+        int left = selectionRect.right - Constants.BUTTON_NORMAL_SIZE * 4 - Constants.BUTTON_SPACE;
+        int top = selectionRect.bottom + Constants.BUTTON_SPACE;
+        int right = selectionRect.right + Constants.BUTTON_SPACE;
+        int bottom = selectionRect.bottom + Constants.BUTTON_NORMAL_SIZE + Constants.BUTTON_SPACE * 2;
+        // 初始化按钮组
+        buttonGroupRect = new Rect(left, top, right, bottom);
+        button1Rect = new Rect(left, top, left + Constants.BUTTON_NORMAL_SIZE * 2, bottom);
+        button2Rect = new Rect(left + Constants.BUTTON_NORMAL_SIZE * 2 + Constants.BUTTON_SPACE, top, right, bottom);
     }
 
     @Override
     protected void onDraw(@NonNull Canvas canvas) {
         super.onDraw(canvas);
         if (selectionRect != null) {
+            // 设置画笔颜色
+            paint.setColor(Color.RED);
+            // 设置画笔样式
+            paint.setStyle(Paint.Style.STROKE);
+            // 设置画笔宽度
+            paint.setStrokeWidth(5);
             // 绘制选择区域
             canvas.drawRect(selectionRect, paint);
+        }
+
+        if (buttonGroupRect != null) {
+            // 设置填充颜色
+            paint.setColor(ContextCompat.getColor(context, R.color.button_group_fill));
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawRect(buttonGroupRect, paint);
+        }
+
+        if (button1Rect != null) {
+            // 设置填充颜色
+            paint.setColor(ContextCompat.getColor(context, R.color.button_fill));
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawRect(button1Rect, paint);
+
+            // 设置文字颜色和大小
+            paint.setColor(ContextCompat.getColor(context, R.color.button_text));
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextSize(30);
+            paint.setTextAlign(Paint.Align.CENTER);
+
+            // 计算文字位置
+            String text = Constants.BUTTON_ONE_START_TEXT;
+            if (button1Pressed) {
+                text = Constants.BUTTON_ONE_END_TEXT;
+            }
+            float x = button1Rect.centerX();
+            float y = button1Rect.centerY() - (paint.descent() + paint.ascent()) / 2;
+
+            // 绘制文字
+            canvas.drawText(text, x, y, paint);
+        }
+
+        if (button2Rect != null) {
+            // 设置填充颜色
+            paint.setColor(ContextCompat.getColor(context, R.color.button_fill));
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawRect(button2Rect, paint);
+
+            // 设置文字颜色和大小
+            paint.setColor(ContextCompat.getColor(context, R.color.button_text));
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextSize(30);
+            paint.setTextAlign(Paint.Align.CENTER);
+
+            // 计算文字位置
+            String text = Constants.BUTTON_TWO_START_TEXT;
+            if (button2Pressed) {
+                text = Constants.BUTTON_TWO_END_TEXT;
+            }
+            float x = button2Rect.centerX();
+            float y = button2Rect.centerY() - (paint.descent() + paint.ascent()) / 2;
+
+            // 绘制文字
+            canvas.drawText(text, x, y, paint);
         }
     }
 
@@ -88,20 +171,33 @@ public class ScreenSelectionView extends View {
                 // 判断是否点击了调整大小区域
                 if (OffsetUtils.isWithinOffset(startX, selectionRect.left) && OffsetUtils.isWithinOffset(startY, selectionRect.top)) {
                     // 左上角
-                    isAdjust = true;
                     adjustOrientation = 1;
                 } else if (OffsetUtils.isWithinOffset(startX, selectionRect.right) && OffsetUtils.isWithinOffset(startY, selectionRect.top)) {
                     // 右上角
-                    isAdjust = true;
                     adjustOrientation = 2;
                 } else if (OffsetUtils.isWithinOffset(startX, selectionRect.left) && OffsetUtils.isWithinOffset(startY, selectionRect.bottom)) {
                     // 左下角
-                    isAdjust = true;
                     adjustOrientation = 3;
                 } else if (OffsetUtils.isWithinOffset(startX, selectionRect.right) && OffsetUtils.isWithinOffset(startY, selectionRect.bottom)) {
                     // 右下角
-                    isAdjust = true;
                     adjustOrientation = 4;
+                } else if (button1Rect.contains((int) startX, (int) startY)) {
+                    isAdjust = button1Pressed;
+                    button1Pressed = !button1Pressed;
+                    if (button1Pressed) {
+                        // 锁定
+                    }
+                    // 重新绘制
+                    invalidate();
+                } else if (button2Rect.contains((int) startX, (int) startY)) {
+                    button2Pressed = !button2Pressed;
+//                    if (button2Pressed) {
+//                        ScreenRecordingBiz.startScreenRecording(context, null, Constants.REQUEST_CODE_SYSTEM_ALERT_WINDOW);
+//                    } else {
+//                        ScreenRecordingBiz.stopScreenRecording(context);
+//                    }
+                    // 重新绘制
+                    invalidate();
                 }
                 break;
             case MotionEvent.ACTION_MOVE:
@@ -138,21 +234,19 @@ public class ScreenSelectionView extends View {
                             startY = event.getY();
                             break;
                     }
-                } else {
-                    // 移动整个矩形
-                    int dx = (int) (event.getX() - startX);
-                    int dy = (int) (event.getY() - startY);
-                    selectionRect.offset(dx, dy);
-                    startX = event.getX();
-                    startY = event.getY();
                 }
+                // 获取最新的按钮组位置
+                int left = selectionRect.right - Constants.BUTTON_NORMAL_SIZE * 4 - Constants.BUTTON_SPACE;
+                int top = selectionRect.bottom + Constants.BUTTON_SPACE;
+                // 更新按钮组位置
+                buttonGroupRect.offsetTo(left, top);
+                button1Rect.offsetTo(left, top);
+                button2Rect.offsetTo(left + Constants.BUTTON_NORMAL_SIZE * 2 + Constants.BUTTON_SPACE, top);
                 // 重新绘制
                 invalidate();
                 break;
             case MotionEvent.ACTION_UP:
                 Log.e("ACTION_UP", "selectionRect:" + selectionRect.toString());
-                // 停止调整
-                isAdjust = false;
                 // 重置调整方向
                 adjustOrientation = 0;
                 break;
