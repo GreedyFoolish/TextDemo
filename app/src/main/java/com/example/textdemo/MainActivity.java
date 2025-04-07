@@ -20,10 +20,12 @@ import com.example.textdemo.biz.ScreenRecordingBiz;
 import com.example.textdemo.biz.SelectionRectBiz;
 import com.example.textdemo.databinding.ActivityMainBinding;
 import com.example.textdemo.dao.TextItemDao;
+import com.example.textdemo.ui.ScreenSelectionView;
 import com.example.textdemo.utils.CheckPermission;
 import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.FIleOperation;
 import com.example.textdemo.utils.FilePickerHelper;
+import com.example.textdemo.utils.GlobalStateManager;
 import com.example.textdemo.utils.ScreenRecordingHelper;
 
 import java.util.Arrays;
@@ -112,13 +114,45 @@ public class MainActivity extends AppCompatActivity {
         binding.btnOpenFile.setOnClickListener(v -> filePickerHelper.openFile());
 
         // 录屏按钮点击事件
-        binding.btnStartRecording.setOnClickListener(v -> ScreenRecordingBiz.startScreenRecording(this, screenRecordLauncher, Constants.REQUEST_RECORDING_PERMISSIONS));
+        binding.btnStartRecording.setOnClickListener(v -> startScreenRecordingInternal());
 
         // 停止录屏按钮点击事件
-        binding.btnStopRecording.setOnClickListener(v -> ScreenRecordingBiz.stopScreenRecording(this));
+        binding.btnStopRecording.setOnClickListener(v -> stopScreenRecordingInternal());
+
+        // 创建屏幕选择视图的点击事件回调
+        ScreenSelectionView.OnButton2ClickListener onButton2ClickListener = new ScreenSelectionView.OnButton2ClickListener() {
+            @Override
+            public void onButton2OCR() {
+                // 启动屏幕录制OCR识别
+                startScreenRecordingInternal();
+            }
+
+            @Override
+            public void onButton2Pause() {
+                // 停止屏幕录制OCR识别
+                stopScreenRecordingInternal();
+            }
+        };
+
+        // 设置全局状态管理器中的按钮点击事件回调
+        GlobalStateManager.setOnButton2ClickListener(onButton2ClickListener);
 
         // 选择范围按钮点击事件
         binding.selectionRect.setOnClickListener(v -> SelectionRectBiz.addView(this, binding));
+    }
+
+    /**
+     * 启动屏幕录制的内部方法
+     */
+    private void startScreenRecordingInternal() {
+        ScreenRecordingBiz.startScreenRecording(this, screenRecordLauncher, Constants.REQUEST_RECORDING_PERMISSIONS);
+    }
+
+    /**
+     * 停止屏幕录制的内部方法
+     */
+    private void stopScreenRecordingInternal() {
+        ScreenRecordingBiz.stopScreenRecording(this);
     }
 
     /**

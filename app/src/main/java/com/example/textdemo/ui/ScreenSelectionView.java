@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat;
 
 import com.example.textdemo.R;
 import com.example.textdemo.utils.Constants;
+import com.example.textdemo.utils.GlobalStateManager;
 import com.example.textdemo.utils.OffsetUtils;
 import com.example.textdemo.utils.RectDatabaseHelper;
 
@@ -52,6 +53,15 @@ public class ScreenSelectionView extends View {
     private boolean button1Pressed = false;
     // 按钮2是否按下
     private boolean button2Pressed = false;
+
+    // 按钮2点击事件回调
+    public interface OnButton2ClickListener {
+        // 识别按钮点击事件
+        void onButton2OCR();
+
+        // 暂停按钮点击事件
+        void onButton2Pause();
+    }
 
     public ScreenSelectionView(Context context) {
         super(context);
@@ -213,11 +223,17 @@ public class ScreenSelectionView extends View {
                     invalidate();
                 } else if (button2Rect.contains((int) startX, (int) startY)) {
                     button2Pressed = !button2Pressed;
-//                    if (button2Pressed) {
-//                        ScreenRecordingBiz.startScreenRecording(context, null, Constants.REQUEST_CODE_SYSTEM_ALERT_WINDOW);
-//                    } else {
-//                        ScreenRecordingBiz.stopScreenRecording(context);
-//                    }
+                    // 获取全局监听器
+                    OnButton2ClickListener listener = GlobalStateManager.getOnButton2ClickListener();
+                    if (listener != null) {
+                        if (button2Pressed) {
+                            // 识别回调
+                            listener.onButton2OCR();
+                        } else {
+                            // 暂停回调
+                            listener.onButton2Pause();
+                        }
+                    }
                     // 重新绘制
                     invalidate();
                 }
