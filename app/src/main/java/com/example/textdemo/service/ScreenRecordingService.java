@@ -34,6 +34,7 @@ import com.example.textdemo.utils.FIleOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class ScreenRecordingService extends Service {
     // 通知渠道的 ID
@@ -54,6 +55,10 @@ public class ScreenRecordingService extends Service {
     private Handler imageHandler;
     // Tesseract OCR 引擎
     private TessBaseAPI tessBaseAPI;
+    // 创建一个 Bitmap 对象，用于存储图像数据
+    private Bitmap bitmap;
+    // 裁剪后的 Bitmap 对象
+    private Bitmap croppedBitmap;
 
     @Override
     public void onCreate() {
@@ -63,6 +68,16 @@ public class ScreenRecordingService extends Service {
     @SuppressLint("WrongConstant")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 检查是否是停止媒体投影的意图
+        if (Constants.STOP_MEDIA_PROJECTION.equals(intent.getAction())) {
+            // 停止媒体投影
+            stopMediaProjection();
+            // 停止服务
+            stopSelf();
+            // 返回 START_NOT_STICKY
+            return START_NOT_STICKY;
+        }
+
         // 创建通知渠道
         createNotificationChannel();
 
@@ -179,16 +194,6 @@ public class ScreenRecordingService extends Service {
                 width, height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 imageReader.getSurface(), null, null);
 
-        // 检查是否是停止媒体投影的意图
-        if (Constants.STOP_MEDIA_PROJECTION.equals(intent.getAction())) {
-            // 停止媒体投影
-            stopMediaProjection();
-            // 停止服务
-            stopSelf();
-            // 返回 START_NOT_STICKY
-            return START_NOT_STICKY;
-        }
-
         return START_NOT_STICKY;
     }
 
@@ -228,55 +233,72 @@ public class ScreenRecordingService extends Service {
      * @param image 图像
      */
     private void processImage(Image image) {
-        // 获取图像平面
-        Image.Plane[] planes = image.getPlanes();
-        if (planes.length != 1) {
-            Log.e("processImage", "错误的图像平面数量：" + planes.length);
-            image.close();
+        if (image == null || image.getPlanes().length == 0) {
+            Log.e("processImage", "无效的图像或无图像平面");
             return;
         }
 
-        // 获取图像数据
-        ByteBuffer buffer = planes[0].getBuffer();
-        // 创建字节数组
-        byte[] data = new byte[buffer.remaining()];
-        //  将数据从缓冲区复制到字节数组
-        buffer.get(data);
+        try {
+            // 获取图像平面
+            Image.Plane[] planes = image.getPlanes();
+            if (planes.length != 1) {
+                Log.e("processImage", "错误的图像平面数量：" + planes.length);
+                return;
+            }
 
-        // 创建 Bitmap
-        Bitmap bitmap = Bitmap.createBitmap(image.getWidth(), image.getHeight(), Bitmap.Config.ARGB_8888);
-        // 将数据复制到 Bitmap
-        bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(data));
+            // 获取图像数据
+            ByteBuffer buffer = planes[0].getBuffer();
+            // 确保缓冲区有剩余数据
+            if (buffer.remaining() <= 0) {
+                Log.e("processImage", "空缓冲区");
+                return;
+            }
+            // 创建字节数组
+            byte[] data = new byte[buffer.remaining()];
+            //  将数据从缓冲区复制到字节数组
+            buffer.get(data);
 
-        // 指定区域的坐标（左上角和右下角）
-        // 左上角 x 坐标
-        int left = 0;
-        // 左上角 y 坐标
-        int top = 0;
-        // 右下角 x 坐标
-        int right = 300;
-        // 右下角 y 坐标
-        int bottom = 300;
+            // 创建 Bitmap
+            bitmap = Bitmap.createBitmap(image.getWidth(), image.getHeight(), Bitmap.Config.ARGB_8888);
+            // 将数据复制到 Bitmap
+            bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(data));
 
-        // 裁剪指定区域的图像
-        Bitmap croppedBitmap = Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top);
+            // 指定区域的坐标（左上角和右下角）
+            // 左上角 x 坐标
+            int left = 0;
+            // 左上角 y 坐标
+            int top = 0;
+            // 右下角 x 坐标
+            int right = 300;
+            // 右下角 y 坐标
+            int bottom = 300;
 
-        // 使用 Tesseract OCR 进行处理
-        tessBaseAPI.setImage(croppedBitmap);
-        String result = tessBaseAPI.getUTF8Text();
-        Log.e("OCR Result", result);
+            // 裁剪指定区域的图像
+            croppedBitmap = Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top);
 
-        // 处理 OCR 结果
-        handleOCRResult(result);
 
-        // 清理资源
-        tessBaseAPI.clear();
-        // 回收 Bitmap
-        bitmap.recycle();
-        // 回收裁剪后的 Bitmap
-        croppedBitmap.recycle();
-        // 关闭图像
-        image.close();
+            if (tessBaseAPI != null) {
+                // 使用 Tesseract OCR 进行处理
+                tessBaseAPI.setImage(croppedBitmap);
+                String result = tessBaseAPI.getUTF8Text();
+                Log.e("OCR Result", Objects.requireNonNullElse(result, "OCR 识别结果为空"));
+
+                // 处理 OCR 结果
+                handleOCRResult(result);
+            }
+        } catch (Exception e) {
+            Log.e("processImage", "处理图像时出错", e);
+        } finally {
+            if (image != null) {
+                image.close();
+            }
+            if (bitmap != null && !bitmap.isRecycled()) {
+                bitmap.recycle();
+            }
+            if (croppedBitmap != null && !croppedBitmap.isRecycled()) {
+                croppedBitmap.recycle();
+            }
+        }
     }
 
     private void handleOCRResult(String result) {
@@ -316,10 +338,18 @@ public class ScreenRecordingService extends Service {
         if (imageHandlerThread != null) {
             // 关闭图像处理线程
             imageHandlerThread.quitSafely();
+            try {
+                // 等待图像处理线程完成
+                imageHandlerThread.join(5000);
+            } catch (InterruptedException e) {
+                Log.e("ScreenRecordingService", "图像处理线程中断", e);
+            }
             // 释放图像处理线程
             imageHandlerThread = null;
         }
         if (imageHandler != null) {
+            // 停止图像处理线程
+            imageHandler.removeCallbacksAndMessages(null);
             // 释放图像处理线程
             imageHandler = null;
         }
