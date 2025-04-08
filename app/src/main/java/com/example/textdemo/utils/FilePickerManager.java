@@ -3,6 +3,7 @@ package com.example.textdemo.utils;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -45,7 +46,7 @@ public class FilePickerManager {
                             if (fileUri != null) {
                                 String jsonString = readFile(fileUri);
                                 if (jsonString != null) {
-                                    System.out.println("JSON String: " + jsonString);
+                                    Log.e("Intent data", jsonString);
                                     List<TextItem> itemList = parseJson(jsonString);
                                     if (itemList != null) {
                                         Toast.makeText(activity, "File allItems: ", Toast.LENGTH_LONG).show();

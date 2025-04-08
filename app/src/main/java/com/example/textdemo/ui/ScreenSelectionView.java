@@ -240,15 +240,18 @@ public class ScreenSelectionView extends View {
         } else {
             Log.e("TextItemDao", "No text items found.");
         }
-        ocrResultText = result;
-        // 更新OCR结果文本框的位置
-        int left = 100;
-        int top = buttonGroupRect.bottom + Constants.BUTTON_SPACE;
-        int right = buttonGroupRect.right;
-        int bottom = top + 300;
-        ocrResultRect.set(left, top, right, bottom);
-        // 重新绘制
-        invalidate();
+        // 使用 post 方法确保在主线程中更新视图
+        post(() -> {
+            ocrResultText = result;
+            // 更新OCR结果文本框的位置
+            int left = 100;
+            int top = buttonGroupRect.bottom + Constants.BUTTON_SPACE;
+            int right = buttonGroupRect.right;
+            int bottom = top + 300;
+            ocrResultRect.set(left, top, right, bottom);
+            // 重新绘制
+            invalidate();
+        });
     }
 
     @SuppressLint("ClickableViewAccessibility")
