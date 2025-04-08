@@ -29,7 +29,6 @@ import androidx.core.app.NotificationCompat;
 
 import com.example.textdemo.R;
 import com.example.textdemo.ui.ScreenSelectionView;
-import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.FIleOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
@@ -65,16 +64,6 @@ public class ScreenRecordingService extends Service {
     @SuppressLint("WrongConstant")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // 检查是否是停止媒体投影的意图
-        if (Constants.STOP_MEDIA_PROJECTION.equals(intent.getAction())) {
-            // 停止媒体投影
-            stopMediaProjection();
-            // 停止服务
-            stopSelf();
-            // 返回 START_NOT_STICKY
-            return START_NOT_STICKY;
-        }
-
         // 创建通知渠道
         createNotificationChannel();
 
@@ -159,7 +148,6 @@ public class ScreenRecordingService extends Service {
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
         // 设置 ImageReader 的监听器
         imageReader.setOnImageAvailableListener(reader -> {
-            Log.e("ImageReader", "ImageAvailableListener 已调用");
             // 处理图像
             processImage(reader.acquireLatestImage());
         }, imageHandler);
@@ -233,7 +221,7 @@ public class ScreenRecordingService extends Service {
             }
             // 创建字节数组
             byte[] data = new byte[buffer.remaining()];
-            //  将数据从缓冲区复制到字节数组
+            // 将数据从缓冲区复制到字节数组
             buffer.get(data);
 
             if (bitmap == null || bitmap.isRecycled()) {

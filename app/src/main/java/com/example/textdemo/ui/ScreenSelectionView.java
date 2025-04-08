@@ -2,6 +2,7 @@ package com.example.textdemo.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -18,6 +19,7 @@ import androidx.core.content.ContextCompat;
 import com.example.textdemo.R;
 import com.example.textdemo.dao.TextItemDao;
 import com.example.textdemo.entity.TextItem;
+import com.example.textdemo.service.FloatingWindowService;
 import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.GlobalStateManager;
 import com.example.textdemo.utils.OffsetUtils;
@@ -295,6 +297,8 @@ public class ScreenSelectionView extends View {
                         } else {
                             // 暂停回调
                             listener.onButton2Pause();
+                            // 停止悬浮框服务
+                            stopFloatingWindowService();
                         }
                     }
                     // 重新绘制
@@ -355,5 +359,12 @@ public class ScreenSelectionView extends View {
                 break;
         }
         return true;
+    }
+
+    // 停止悬浮框服务
+    private void stopFloatingWindowService() {
+        Intent serviceIntent = new Intent(context, FloatingWindowService.class);
+        context.stopService(serviceIntent);
+        Log.e("clearOverlay", "FloatingWindowService 已停止");
     }
 }

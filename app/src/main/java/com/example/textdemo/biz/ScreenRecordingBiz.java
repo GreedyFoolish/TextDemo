@@ -46,35 +46,7 @@ public class ScreenRecordingBiz {
     public static void stopScreenRecording(Activity context) {
         // 创建一个停止ScreenRecordingService的Intent
         Intent serviceIntent = new Intent(context, ScreenRecordingService.class);
-        // 设置Intent的action为STOP_MEDIA_PROJECTION
-        serviceIntent.setAction(Constants.STOP_MEDIA_PROJECTION);
-        // 启动停止ScreenRecordingService的Intent
-        context.startService(serviceIntent);
-        Log.e("stopScreenRecording", "停止屏幕录制");
-    }
-
-    /**
-     * 播放录制的视频
-     *
-     * @param videoView 视频播放控件
-     */
-    public static void playRecording(Activity context, VideoView videoView) {
-        // 初始化视频文件的路径
-        String videoPath = FIleOperation.getVideoFilePath();
-        // 检查视频播放控件是否为空
-        if (videoView == null) {
-            Log.e("playRecording", "没有可用的视频播放控件");
-            return;
-        }
-        // 检查视频文件是否存在
-        if (videoPath != null) {
-            // 设置VideoView的视频URI
-            Uri videoUri = Uri.parse(videoPath);
-            videoView.setVideoURI(videoUri);
-            videoView.start();
-        } else {
-            // 提示用户没有可用视频文件
-            Toast.makeText(context, "没有可用的视频文件", Toast.LENGTH_SHORT).show();
-        }
+        // 停止ScreenRecordingService
+        context.stopService(serviceIntent);
     }
 }
