@@ -61,7 +61,7 @@ public class FilePickerManager {
                                         for (TextItem item : allItems) {
                                             System.out.println(item);
                                         }
-                                        Toast.makeText(activity, "File allItems: " + allItems, Toast.LENGTH_LONG).show();
+                                        // Toast.makeText(activity, "File allItems: " + allItems, Toast.LENGTH_LONG).show();
                                     } else {
                                         Toast.makeText(activity, "Failed to parse JSON", Toast.LENGTH_SHORT).show();
                                     }

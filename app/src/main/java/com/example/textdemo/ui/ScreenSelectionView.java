@@ -2,7 +2,6 @@ package com.example.textdemo.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -17,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 
 import com.example.textdemo.R;
+import com.example.textdemo.dao.TextItemDao;
 import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.GlobalStateManager;
 import com.example.textdemo.utils.OffsetUtils;
@@ -57,6 +57,8 @@ public class ScreenSelectionView extends View {
     private Rect ocrResultRect;
     // OCR结果文本
     private String ocrResultText;
+    // 文本项数据访问对象
+    private TextItemDao textItemDao;
 
     // 按钮2点击事件回调
     public interface OnButton2ClickListener {
@@ -89,6 +91,8 @@ public class ScreenSelectionView extends View {
      * 初始化画笔和选择区域
      */
     private void init() {
+        // 初始化文本项数据访问对象
+        textItemDao = new TextItemDao(context);
         // 初始化画笔
         paint = new Paint();
         // 设置画笔颜色
@@ -103,11 +107,11 @@ public class ScreenSelectionView extends View {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         // 获取列名
         String[] columns = {RectDatabaseHelper.getColumnId()};
-        // 创建游标
-        @SuppressLint("Recycle") Cursor cursor = db.query(RectDatabaseHelper.getTABLE_RECTANGLES(), columns, null, null, null, null, null);
-        // 判断表中是否有数据
-        if (cursor.getCount() == 0) {
-            // 若表中无数据，则初始化一条数据
+        // 检查表是否存在
+        if (!dbHelper.tableExists(db, RectDatabaseHelper.getTABLE_RECTANGLES())) {
+            // 如果表不存在，onCreate 方法会自动创建表
+            dbHelper.onCreate(db);
+            // 初始化一条数据
             dbHelper.insertInitialData();
         }
         // 从数据库中获取保存的矩形位置信息

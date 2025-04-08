@@ -26,7 +26,7 @@ public class RectDatabaseHelper extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase db) {
         String CREATE_TABLE_RECTANGLES = "CREATE TABLE " + TABLE_RECTANGLES + "("
                 + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + COLUMN_LEFT + " INTEGER, " // 使用修改后的列名
+                + COLUMN_LEFT + " INTEGER, "
                 + COLUMN_TOP + " INTEGER, "
                 + COLUMN_RIGHT + " INTEGER, "
                 + COLUMN_BOTTOM + " INTEGER)";
@@ -37,6 +37,13 @@ public class RectDatabaseHelper extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_RECTANGLES);
         onCreate(db);
+    }
+
+    public boolean tableExists(SQLiteDatabase db, String tableName) {
+        Cursor cursor = db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name=?", new String[]{tableName});
+        boolean exists = cursor.getCount() > 0;
+        cursor.close();
+        return exists;
     }
 
     public void insertInitialData() {
