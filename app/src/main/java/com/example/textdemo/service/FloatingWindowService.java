@@ -31,21 +31,17 @@ public class FloatingWindowService extends Service {
 
         // 获取屏幕高度
         DisplayMetrics displayMetrics = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
         int screenHeight = displayMetrics.heightPixels;
 
-        // 将100dp转换为px
-        int dpValue = 200;
-        float density = getResources().getDisplayMetrics().density;
-        int pxValue = (int) (dpValue * density + 0.5f);
-
-        // 计算浮窗的高度
-        int windowHeight = screenHeight - pxValue;
+        // 计算浮窗的高度为屏幕高度的一半
+        int windowHeight = screenHeight / 2;
 
         // 设置布局参数
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 // 匹配父容器的宽度
                 WindowManager.LayoutParams.MATCH_PARENT,
-                // 浮窗高度为屏幕高度减去200dp
+                // 设置窗口高度为屏幕高度的一半
                 windowHeight,
                 // 显示在应用顶部
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -59,7 +55,7 @@ public class FloatingWindowService extends Service {
         params.gravity = Gravity.TOP | Gravity.LEFT;
         // 设置视图的初始位置
         params.x = 0;
-        params.y = 0;
+        params.y = 100;
 
         // 将视图添加到窗口
         windowManager.addView(screenSelectionView, params);
