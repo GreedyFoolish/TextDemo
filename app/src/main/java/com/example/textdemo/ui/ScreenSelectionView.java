@@ -12,6 +12,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -216,15 +217,94 @@ public class ScreenSelectionView extends View {
             paint.setColor(ContextCompat.getColor(context, R.color.ocr_result_text));
             paint.setStyle(Paint.Style.FILL);
             paint.setTextSize(30);
-            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setTextAlign(Paint.Align.LEFT);
 
-            // 计算文字位置
-            float x = ocrResultRect.centerX();
-            float y = ocrResultRect.centerY() - (paint.descent() + paint.ascent()) / 2;
+            // 分割文本为多行
+            String[] lines = ocrResultText.split("\n");
 
-            // 绘制文字
-            canvas.drawText(ocrResultText, x, y, paint);
+            // 计算文字纵轴位置
+            float y = ocrResultRect.top + Constants.BUTTON_SPACE + -paint.ascent(); // 调整y位置以对齐顶部
+
+            // 计算所需的高度
+            float totalHeight = 0;
+            // 计算每行文字的宽度
+            float availableWidth = ocrResultRect.width() - 2 * Constants.BUTTON_SPACE;
+
+            for (String line : lines) {
+                // 计算文字横轴位置
+                float x = ocrResultRect.left + Constants.BUTTON_SPACE;
+
+                while (line.length() > 0) {
+                    // 找到可以容纳的最大子字符串
+                    int endIndex = findEndIndex(line, paint, availableWidth);
+                    String subLine = line.substring(0, endIndex);
+                    // 更新文字纵轴位置
+                    y += paint.getTextSize() + Constants.BUTTON_SPACE;
+                    // 更新剩余的字符串
+                    line = line.substring(endIndex).trim();
+                }
+            }
+
+            // 计算总高度
+            totalHeight = y - ocrResultRect.top - Constants.BUTTON_SPACE;
+
+            // 确保高度至少为300
+            int newHeight = Math.max((int) totalHeight, 300);
+            ocrResultRect.bottom = ocrResultRect.top + newHeight;
+
+            // 重新绘制选择区域和按钮组
+            invalidate();
+
+            // 重新计算y位置
+            y = ocrResultRect.top + Constants.BUTTON_SPACE + -paint.ascent();
+
+            for (String line : lines) {
+                // 计算文字横轴位置
+                float x = ocrResultRect.left + Constants.BUTTON_SPACE;
+
+                while (line.length() > 0) {
+                    // 找到可以容纳的最大子字符串
+                    int endIndex = findEndIndex(line, paint, availableWidth);
+                    String subLine = line.substring(0, endIndex);
+                    // 绘制子字符串
+                    canvas.drawText(subLine, x, y, paint);
+                    // 更新文字纵轴位置
+                    y += paint.getTextSize() + Constants.BUTTON_SPACE;
+                    // 更新剩余的字符串
+                    line = line.substring(endIndex).trim();
+                }
+            }
         }
+    }
+
+    /**
+     * 找到可以容纳的最大子字符串的结束索引
+     *
+     * @param text           原始字符串
+     * @param paint          画笔
+     * @param availableWidth 可用宽度
+     * @return 可容纳的最大子字符串的结束索引
+     */
+    private int findEndIndex(String text, Paint paint, float availableWidth) {
+        int endIndex = text.length();
+        float textWidth = paint.measureText(text);
+        if (textWidth <= availableWidth) {
+            return endIndex;
+        }
+        // 二分查找可以容纳的最大子字符串的结束索引
+        int start = 0;
+        int end = text.length();
+        while (start < end) {
+            int mid = (start + end) / 2;
+            String subText = text.substring(0, mid);
+            float subTextWidth = paint.measureText(subText);
+            if (subTextWidth <= availableWidth) {
+                start = mid + 1;
+            } else {
+                end = mid;
+            }
+        }
+        return start - 1;
     }
 
     /**
@@ -234,26 +314,29 @@ public class ScreenSelectionView extends View {
      */
     public void setOcrResult(String result) {
         Log.e("setOcrResult", "ocrResultText: " + result);
-        // 示例代码，实际应用中需要根据实际需求进行修改
-        String inputText = "蔡文姬的帧名";
-        TextItem closestItem = TextItemDao.findClosestTextItem(inputText);
+        TextItem closestItem = TextItemDao.findClosestTextItem(result);
         if (closestItem != null) {
-            Log.e("TextItemDao", "Closest text item: " + closestItem.getText());
+            String text = closestItem.getText();
+            String res = closestItem.isRes() ? "对" : "错";
+            // 格式化字符串
+            String resultText = "OCR识别结果：" + result + "\nOCR匹配结果：" + text + "\nOCR匹配答案：" + res;
+            // 使用 post 方法确保在主线程中更新视图
+            post(() -> {
+                ocrResultText = resultText;
+                // 更新OCR结果文本框的位置
+                int left = 100;
+                int top = buttonGroupRect.bottom + Constants.BUTTON_SPACE;
+                int right = buttonGroupRect.right;
+                int bottom = top + 300;
+                ocrResultRect.set(left, top, right, bottom);
+                // 重新绘制
+                invalidate();
+            });
+            Log.e("setOcrResult", "最近的文本项：" + closestItem.getText());
         } else {
-            Log.e("TextItemDao", "No text items found.");
+            Log.e("setOcrResult", "无匹配的文本项");
+            Toast.makeText(context, "无匹配的文本项", Toast.LENGTH_SHORT).show();
         }
-        // 使用 post 方法确保在主线程中更新视图
-        post(() -> {
-            ocrResultText = result;
-            // 更新OCR结果文本框的位置
-            int left = 100;
-            int top = buttonGroupRect.bottom + Constants.BUTTON_SPACE;
-            int right = buttonGroupRect.right;
-            int bottom = top + 300;
-            ocrResultRect.set(left, top, right, bottom);
-            // 重新绘制
-            invalidate();
-        });
     }
 
     @SuppressLint("ClickableViewAccessibility")
