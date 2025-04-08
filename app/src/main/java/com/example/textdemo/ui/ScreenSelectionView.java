@@ -53,6 +53,10 @@ public class ScreenSelectionView extends View {
     private boolean button1Pressed = false;
     // 按钮2是否按下
     private boolean button2Pressed = false;
+    // OCR结果文本框
+    private Rect ocrResultRect;
+    // OCR结果文本
+    private String ocrResultText;
 
     // 按钮2点击事件回调
     public interface OnButton2ClickListener {
@@ -119,6 +123,9 @@ public class ScreenSelectionView extends View {
         buttonGroupRect = new Rect(left, top, right, bottom);
         button1Rect = new Rect(left, top, left + Constants.BUTTON_NORMAL_SIZE * 2, bottom);
         button2Rect = new Rect(left + Constants.BUTTON_NORMAL_SIZE * 2 + Constants.BUTTON_SPACE, top, right, bottom);
+        // 初始化OCR结果文本框
+        ocrResultRect = new Rect(0, bottom + Constants.BUTTON_SPACE, right, bottom + Constants.BUTTON_SPACE + 300);
+        ocrResultText = "";
     }
 
     @Override
@@ -154,11 +161,12 @@ public class ScreenSelectionView extends View {
             paint.setTextSize(30);
             paint.setTextAlign(Paint.Align.CENTER);
 
-            // 计算文字位置
+            // 判断按钮是否按下
             String text = Constants.BUTTON_ONE_START_TEXT;
             if (button1Pressed) {
                 text = Constants.BUTTON_ONE_END_TEXT;
             }
+            // 计算文字位置
             float x = button1Rect.centerX();
             float y = button1Rect.centerY() - (paint.descent() + paint.ascent()) / 2;
 
@@ -178,17 +186,56 @@ public class ScreenSelectionView extends View {
             paint.setTextSize(30);
             paint.setTextAlign(Paint.Align.CENTER);
 
-            // 计算文字位置
+            // 判断按钮是否按下
             String text = Constants.BUTTON_TWO_START_TEXT;
             if (button2Pressed) {
                 text = Constants.BUTTON_TWO_END_TEXT;
             }
+            // 计算文字位置
             float x = button2Rect.centerX();
             float y = button2Rect.centerY() - (paint.descent() + paint.ascent()) / 2;
 
             // 绘制文字
             canvas.drawText(text, x, y, paint);
         }
+
+        if (ocrResultRect != null && ocrResultText != null && !ocrResultText.isEmpty()) {
+            // 设置填充颜色
+            paint.setColor(ContextCompat.getColor(context, R.color.ocr_result_fill));
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawRect(ocrResultRect, paint);
+
+            // 设置文字颜色和大小
+            paint.setColor(ContextCompat.getColor(context, R.color.ocr_result_text));
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextSize(30);
+            paint.setTextAlign(Paint.Align.CENTER);
+
+            // 计算文字位置
+            float x = ocrResultRect.centerX();
+            float y = ocrResultRect.centerY() - (paint.descent() + paint.ascent()) / 2;
+
+            // 绘制文字
+            canvas.drawText(ocrResultText, x, y, paint);
+        }
+    }
+
+    /**
+     * 设置OCR结果
+     *
+     * @param result OCR结果
+     */
+    public void setOcrResult(String result) {
+        Log.e("setOcrResult", "ocrResultText: " + result);
+        ocrResultText = result;
+        // 更新OCR结果文本框的位置
+        int left = 100;
+        int top = buttonGroupRect.bottom + Constants.BUTTON_SPACE;
+        int right = buttonGroupRect.right;
+        int bottom = top + 300;
+        ocrResultRect.set(left, top, right, bottom);
+        // 重新绘制
+        invalidate();
     }
 
     @SuppressLint("ClickableViewAccessibility")

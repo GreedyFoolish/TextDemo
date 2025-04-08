@@ -5,4 +5,6 @@
     <color name="button_group_fill">#E6E6FA</color>
     <color name="button_fill">#E6E6FA</color>
     <color name="button_text">#666666</color>
+    <color name="ocr_result_fill">#E6E6FA</color>
+    <color name="ocr_result_text">#666666</color>
 </resources>

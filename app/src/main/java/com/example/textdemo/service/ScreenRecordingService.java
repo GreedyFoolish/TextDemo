@@ -29,6 +29,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.example.textdemo.R;
+import com.example.textdemo.ui.ScreenSelectionView;
 import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.FIleOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
@@ -60,10 +61,7 @@ public class ScreenRecordingService extends Service {
     // 裁剪后的 Bitmap 对象
     private Bitmap croppedBitmap;
 
-    @Override
-    public void onCreate() {
-        super.onCreate();
-    }
+    private ScreenSelectionView screenSelectionView;
 
     @SuppressLint("WrongConstant")
     @Override
@@ -172,6 +170,9 @@ public class ScreenRecordingService extends Service {
                 width, height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 imageReader.getSurface(), null, null);
 
+        // 获取ScreenSelectionView实例
+        screenSelectionView = FloatingWindowService.getScreenSelectionView();
+
         return START_NOT_STICKY;
     }
 
@@ -277,9 +278,10 @@ public class ScreenRecordingService extends Service {
     }
 
     private void handleOCRResult(String result) {
-        // 根据需求处理 OCR 结果
-        // 例如：保存到文件、显示在 UI 上等
-        Log.d("OCR Result", "Processed Result: " + result);
+        // 设置OCR结果到ScreenSelectionView
+        if (screenSelectionView != null) {
+            screenSelectionView.setOcrResult(result);
+        }
     }
 
     /**

@@ -16,7 +16,8 @@ import com.example.textdemo.ui.ScreenSelectionView;
 public class FloatingWindowService extends Service {
 
     private WindowManager windowManager;
-    private ScreenSelectionView screenSelectionView;
+    @SuppressLint("StaticFieldLeak")
+    private static ScreenSelectionView screenSelectionView;
 
     @SuppressLint("RtlHardcoded")
     @Override
@@ -55,10 +56,19 @@ public class FloatingWindowService extends Service {
         params.gravity = Gravity.TOP | Gravity.LEFT;
         // 设置视图的初始位置
         params.x = 0;
-        params.y = 100;
+        params.y = 0;
 
         // 将视图添加到窗口
         windowManager.addView(screenSelectionView, params);
+    }
+
+    /**
+     * 获取屏幕选择视图
+     *
+     * @return 屏幕选择视图
+     */
+    public static ScreenSelectionView getScreenSelectionView() {
+        return screenSelectionView;
     }
 
     @Override
