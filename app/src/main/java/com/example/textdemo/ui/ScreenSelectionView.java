@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat;
 
 import com.example.textdemo.R;
 import com.example.textdemo.dao.TextItemDao;
+import com.example.textdemo.entity.TextItem;
 import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.GlobalStateManager;
 import com.example.textdemo.utils.OffsetUtils;
@@ -231,6 +232,14 @@ public class ScreenSelectionView extends View {
      */
     public void setOcrResult(String result) {
         Log.e("setOcrResult", "ocrResultText: " + result);
+        // 示例代码，实际应用中需要根据实际需求进行修改
+        String inputText = "蔡文姬的帧名";
+        TextItem closestItem = TextItemDao.findClosestTextItem(inputText);
+        if (closestItem != null) {
+            Log.e("TextItemDao", "Closest text item: " + closestItem.getText());
+        } else {
+            Log.e("TextItemDao", "No text items found.");
+        }
         ocrResultText = result;
         // 更新OCR结果文本框的位置
         int left = 100;
