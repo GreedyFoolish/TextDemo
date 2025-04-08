@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
+import android.graphics.Rect;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.Image;
@@ -28,6 +29,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.example.textdemo.R;
+import com.example.textdemo.utils.RectDatabaseHelper;
 import com.example.textdemo.ui.ScreenSelectionView;
 import com.example.textdemo.utils.FIleOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
@@ -58,8 +60,12 @@ public class ScreenRecordingService extends Service {
     private Bitmap bitmap;
     // 裁剪后的 Bitmap 对象
     private Bitmap croppedBitmap;
-
+    // 屏幕选择视图
     private ScreenSelectionView screenSelectionView;
+    // 数据库操作
+    private RectDatabaseHelper dbHelper;
+    // 保存的矩形位置信息
+    private Rect savedRect;
 
     @SuppressLint("WrongConstant")
     @Override
@@ -136,6 +142,11 @@ public class ScreenRecordingService extends Service {
                 Log.e("ScreenRecordingService", "Tesseract data copy failed", e);
             }
         });
+
+        // 初始化数据库操作
+        dbHelper = new RectDatabaseHelper(this);
+        // 从数据库中获取保存的矩形位置信息，如果没有找到，则使用默认的矩形位置信息
+        savedRect = Objects.requireNonNullElseGet(dbHelper.getRectangle(1), () -> new Rect(100, 100, 400, 400));
 
         // 初始化图像处理线程
         imageHandlerThread = new HandlerThread("ImageHandlerThread");
@@ -233,13 +244,13 @@ public class ScreenRecordingService extends Service {
 
             // 指定区域的坐标（左上角和右下角）
             // 左上角 x 坐标
-            int left = 0;
+            int left = Math.max(savedRect.left, 0);
             // 左上角 y 坐标
-            int top = 0;
+            int top = Math.max(savedRect.top, 0);
             // 右下角 x 坐标
-            int right = Math.min(300, image.getWidth());
+            int right = Math.min(savedRect.right, image.getWidth());
             // 右下角 y 坐标
-            int bottom = Math.min(300, image.getHeight());
+            int bottom = Math.min(savedRect.bottom, image.getHeight());
 
             if (croppedBitmap == null || croppedBitmap.isRecycled()) {
                 // 裁剪位图
