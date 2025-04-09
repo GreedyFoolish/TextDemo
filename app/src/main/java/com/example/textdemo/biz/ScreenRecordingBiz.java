@@ -4,18 +4,14 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.media.projection.MediaProjectionManager;
-import android.net.Uri;
 import android.os.Build;
-import android.util.Log;
 import android.widget.Toast;
-import android.widget.VideoView;
 
 import androidx.activity.result.ActivityResultLauncher;
 
 import com.example.textdemo.service.ScreenRecordingService;
 import com.example.textdemo.utils.CheckPermission;
 import com.example.textdemo.utils.Constants;
-import com.example.textdemo.utils.FIleOperation;
 
 public class ScreenRecordingBiz {
 

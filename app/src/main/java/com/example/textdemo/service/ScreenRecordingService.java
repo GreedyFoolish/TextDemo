@@ -19,6 +19,7 @@ import android.media.ImageReader;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -32,9 +33,10 @@ import com.example.textdemo.R;
 import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.RectDatabaseHelper;
 import com.example.textdemo.ui.ScreenSelectionView;
-import com.example.textdemo.utils.FIleOperation;
+import com.example.textdemo.utils.FileOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -119,7 +121,7 @@ public class ScreenRecordingService extends Service {
         int dpi = displayMetrics.densityDpi;
 
         // 复制 Tesseract OCR 数据
-        FIleOperation.copyTessData(this, new FIleOperation.CopyCallback() {
+        FileOperation.copyTessData(this, new FileOperation.CopyCallback() {
             @Override
             public void onCopyComplete(Context context) {
                 // 初始化 Tesseract OCR 引擎
@@ -224,7 +226,7 @@ public class ScreenRecordingService extends Service {
             return;
         }
 
-        try {
+        try (image) {
             // 获取图像平面
             Image.Plane[] planes = image.getPlanes();
             if (planes.length != 1) {
@@ -261,10 +263,12 @@ public class ScreenRecordingService extends Service {
             // 右下角 y 坐标
             int bottom = Math.min(savedRect.bottom, image.getHeight());
 
-            if (croppedBitmap == null || croppedBitmap.isRecycled()) {
-                // 裁剪位图
-                croppedBitmap = Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top);
-            }
+            // 裁剪位图
+            croppedBitmap = Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top);
+
+            Log.e("processImage", "裁剪区域：" + left + ", " + top + ", " + right + ", " + bottom);
+            Log.e("processImage", "图片区域：" + bitmap.getWidth() + ", " + bitmap.getHeight());
+            Log.e("processImage", "Cropped Bitmap created with size: " + croppedBitmap.getWidth() + "x" + croppedBitmap.getHeight());
 
             if (tessBaseAPI != null) {
                 // 使用 Tesseract OCR 进行处理
@@ -275,13 +279,14 @@ public class ScreenRecordingService extends Service {
                     return;
                 }
                 handleOCRResult(result);
+
+                // 保存裁剪后的位图到本地
+                String timestamp = String.valueOf(System.currentTimeMillis());
+                String filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath() + File.separator + timestamp + "cropped_image.png";
+                FileOperation.saveBitmapToFile(croppedBitmap, filePath);
             }
         } catch (Exception e) {
             Log.e("processImage", "处理图像时出错", e);
-        } finally {
-            if (image != null) {
-                image.close();
-            }
         }
     }
 

@@ -1,7 +1,8 @@
 package com.example.textdemo.utils;
 
 import android.content.Context;
-import android.os.Environment;
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
 import android.util.Log;
 
 import java.io.File;
@@ -10,7 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-public class FIleOperation {
+public class FileOperation {
 
     private static final String TAG = "FIleOperation";
 
@@ -25,23 +26,6 @@ public class FIleOperation {
             return !dir.mkdirs();
         }
         return false;
-    }
-
-    /**
-     * 获取视频文件的路径
-     *
-     * @return 视频文件的路径，如果创建失败则返回null
-     */
-    public static String getVideoFilePath() {
-        // 确保目录存在，如果不存在则创建
-        File moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
-        if (ensureDirectoryExists(moviesDir)) {
-            Log.e(TAG, "Failed to create movies directory");
-            return null;
-        }
-
-        File videoFile = new File(moviesDir, "recorded_video.mp4");
-        return videoFile.getAbsolutePath();
     }
 
     /**
@@ -133,6 +117,23 @@ public class FIleOperation {
                 // 写入数据
                 out.write(buffer, 0, bytesRead);
             }
+        }
+    }
+
+    /**
+     * 保存 Bitmap 到指定路径
+     *
+     * @param bitmap   要保存的 Bitmap 对象
+     * @param filePath 文件保存路径
+     */
+    public static void saveBitmapToFile(Bitmap bitmap, String filePath) {
+        File file = new File(filePath);
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            Log.e("saveBitmapToFile", "正在保存到: " + filePath);
+            // 将 Bitmap 保存为 PNG 文件，质量为 100
+            bitmap.compress(CompressFormat.PNG, 100, out);
+        } catch (IOException e) {
+            Log.e("saveBitmapToFile", "保存 Bitmap 到文件时出错", e);
         }
     }
 
