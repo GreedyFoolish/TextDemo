@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.provider.Settings;
 import android.net.Uri;
+import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -56,5 +57,6 @@ public class CheckPermission {
         Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:" + activity.getPackageName()));
         activity.startActivityForResult(intent, requestCode);
+        Toast.makeText(activity, "请在设置中开启悬浮窗权限", Toast.LENGTH_SHORT).show();
     }
 }

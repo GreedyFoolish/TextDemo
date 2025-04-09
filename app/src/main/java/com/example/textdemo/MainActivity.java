@@ -19,12 +19,10 @@ import androidx.navigation.ui.NavigationUI;
 import com.example.textdemo.biz.ScreenRecordingBiz;
 import com.example.textdemo.biz.SelectionRectBiz;
 import com.example.textdemo.databinding.ActivityMainBinding;
-import com.example.textdemo.dao.TextItemDao;
 import com.example.textdemo.service.FloatingWindowService;
 import com.example.textdemo.ui.ScreenSelectionView;
 import com.example.textdemo.utils.CheckPermission;
 import com.example.textdemo.utils.Constants;
-import com.example.textdemo.utils.FIleOperation;
 import com.example.textdemo.utils.FilePickerHelper;
 import com.example.textdemo.utils.GlobalStateManager;
 import com.example.textdemo.utils.ScreenRecordingHelper;
@@ -37,9 +35,6 @@ public class MainActivity extends AppCompatActivity {
 
     // 数据绑定对象
     private ActivityMainBinding binding;
-
-    // 文本项数据访问对象
-    private TextItemDao textItemDao;
 
     // 文件选择器辅助工具
     private FilePickerHelper filePickerHelper;
@@ -105,14 +100,8 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // 初始化文本项数据访问对象
-        textItemDao = new TextItemDao(this);
-
         // 初始化文件选择器辅助工具
-        filePickerHelper = new FilePickerHelper(this, textItemDao);
-
-        // 初始化视频文件的路径
-        videoPath = FIleOperation.getVideoFilePath();
+        filePickerHelper = new FilePickerHelper(this);
 
         // 初始化屏幕录制辅助工具
         ScreenRecordingHelper screenRecordingHelper = new ScreenRecordingHelper(this, videoPath);
@@ -160,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
         GlobalStateManager.setButton2ClickListener(button2ClickListener);
 
         // 导入文件按钮点击事件
-        binding.btnOpenFile.setOnClickListener(v -> filePickerHelper.openFile());
+        binding.btnOpenFile.setOnClickListener(v -> filePickerHelper.openFile(this));
 
         // 录屏按钮点击事件
         binding.btnStartRecording.setOnClickListener(v -> startScreenRecordingInternal());
