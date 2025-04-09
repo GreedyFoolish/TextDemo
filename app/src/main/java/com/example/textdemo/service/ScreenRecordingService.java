@@ -29,6 +29,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.example.textdemo.R;
+import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.RectDatabaseHelper;
 import com.example.textdemo.ui.ScreenSelectionView;
 import com.example.textdemo.utils.FIleOperation;
@@ -147,12 +148,29 @@ public class ScreenRecordingService extends Service {
         // 获取图像处理线程的 Handler
         imageHandler = new Handler(imageHandlerThread.getLooper());
 
+        // 在类中添加一个成员变量来记录上一次处理的时间
+        final long[] lastProcessTime = {0};
+
         // 初始化 ImageReader
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
         // 设置 ImageReader 的监听器
         imageReader.setOnImageAvailableListener(reader -> {
-            // 处理图像
-            processImage(reader.acquireLatestImage());
+            // 获取当前时间
+            long currentTime = System.currentTimeMillis();
+
+            // 检查是否达到了处理间隔时间
+            if (currentTime - lastProcessTime[0] >= Constants.PROCESS_INTERVAL_MS) {
+                Log.e("ScreenCapture", "processImage ++++++++++++");
+                lastProcessTime[0] = currentTime;
+                // 处理图像
+                processImage(reader.acquireLatestImage());
+            } else {
+                // 如果不处理当前帧，则关闭图像以释放资源
+                Image image = reader.acquireLatestImage();
+                if (image != null) {
+                    image.close();
+                }
+            }
         }, imageHandler);
 
         // 创建虚拟显示

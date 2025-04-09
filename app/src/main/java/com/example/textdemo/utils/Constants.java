@@ -23,4 +23,6 @@ public class Constants {
     public static final String BUTTON_TWO_START_TEXT = "识别";
     // 按钮切换后文字
     public static final String BUTTON_TWO_END_TEXT = "暂停";
+    // OCR识别时间间隔（毫秒）
+    public static final int PROCESS_INTERVAL_MS = 300;
 }
