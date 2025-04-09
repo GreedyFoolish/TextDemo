@@ -75,23 +75,19 @@ public class ScreenRecordingService extends Service {
 
         // 创建通知
         Notification notification = createNotification();
+
+        // 启动前台服务
         startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
 
         // 获取媒体投影数据
         Intent mediaProjectionData = intent.getParcelableExtra("mediaProjectionData");
-
-        // 检查 mediaProjectionData 是否为 null
+        /*
+         在 Android 13 (API 33) 及更高版本中，MediaProjection 的 Intent 结构有所变化。具体来说，MediaProjection 的 Bundle 键从
+         android.media.projection.extra.MEDIA_PROJECTION变为 android.media.projection.extra.EXTRA_MEDIA_PROJECTION。
+         */
         if (mediaProjectionData == null) {
-            Log.e("onStartCommand", "mediaProjectionData is null");
+            Log.e("onStartCommand", "mediaProjectionData为空");
             // 停止服务
-            stopSelf();
-            return START_NOT_STICKY;
-        }
-
-        // 获取文件路径参数
-        String videoFilePath = intent.getStringExtra("videoPath");
-        if (videoFilePath == null) {
-            Log.e("onStartCommand", "videoFilePath is null");
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -99,10 +95,6 @@ public class ScreenRecordingService extends Service {
         // 初始化媒体投影管理器
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
 
-        /*
-         在 Android 13 (API 33) 及更高版本中，MediaProjection 的 Intent 结构有所变化。具体来说，MediaProjection 的 Bundle 键从
-         android.media.projection.extra.MEDIA_PROJECTION变为 android.media.projection.extra.EXTRA_MEDIA_PROJECTION。
-         */
         // 获取媒体投影对象
         mediaProjection = mediaProjectionManager.getMediaProjection(Activity.RESULT_OK, mediaProjectionData);
 
@@ -139,7 +131,7 @@ public class ScreenRecordingService extends Service {
 
             @Override
             public void onCopyFailed(Exception e) {
-                Log.e("ScreenRecordingService", "Tesseract data copy failed", e);
+                Log.e("ScreenRecordingService", "Tesseract数据文件复制失败", e);
             }
         });
 

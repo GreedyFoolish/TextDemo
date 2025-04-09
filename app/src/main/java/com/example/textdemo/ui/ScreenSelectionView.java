@@ -12,7 +12,6 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -100,8 +99,6 @@ public class ScreenSelectionView extends View {
         dbHelper = new RectDatabaseHelper(context);
         // 获取数据库
         SQLiteDatabase db = dbHelper.getReadableDatabase();
-        // 获取列名
-        String[] columns = {RectDatabaseHelper.getColumnId()};
         // 检查表是否存在
         if (!dbHelper.tableExists(db, RectDatabaseHelper.getTABLE_RECTANGLES())) {
             // 如果表不存在，onCreate 方法会自动创建表
@@ -326,7 +323,6 @@ public class ScreenSelectionView extends View {
             Log.e("setOcrResult", "最近的文本项：" + closestItem.getText());
         } else {
             Log.e("setOcrResult", "无匹配的文本项");
-            Toast.makeText(context, "无匹配的文本项", Toast.LENGTH_SHORT).show();
         }
     }
 

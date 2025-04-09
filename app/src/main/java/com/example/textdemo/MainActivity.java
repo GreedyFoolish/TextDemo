@@ -39,9 +39,6 @@ public class MainActivity extends AppCompatActivity {
     // 文件选择器辅助工具
     private FilePickerHelper filePickerHelper;
 
-    // 录制视频文件路径
-    private String videoPath;
-
     // 屏幕录制活动结果处理程序
     private ActivityResultLauncher<Intent> screenRecordLauncher;
 
@@ -104,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
         filePickerHelper = new FilePickerHelper(this);
 
         // 初始化屏幕录制辅助工具
-        ScreenRecordingHelper screenRecordingHelper = new ScreenRecordingHelper(this, videoPath);
+        ScreenRecordingHelper screenRecordingHelper = new ScreenRecordingHelper(this);
 
         // 初始化屏幕录制活动结果处理程序
         screenRecordLauncher = screenRecordingHelper.getScreenRecordingManager().getScreenRecordLauncher();

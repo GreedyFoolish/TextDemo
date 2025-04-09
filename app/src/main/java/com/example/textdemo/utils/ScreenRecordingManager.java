@@ -3,14 +3,12 @@ package com.example.textdemo.utils;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.textdemo.service.ScreenRecordingService;
@@ -19,8 +17,6 @@ public class ScreenRecordingManager {
 
     // 屏幕录制的Activity
     private final AppCompatActivity activity;
-    // 录制视频文件路径
-    private final String videoPath;
     // 屏幕录制的ActivityResultLauncher
     private final ActivityResultLauncher<Intent> screenRecordLauncher;
 
@@ -28,15 +24,9 @@ public class ScreenRecordingManager {
      * 构造方法
      *
      * @param activity  屏幕录制的Activity
-     * @param videoPath 录制视频文件路径
      */
-    public ScreenRecordingManager(AppCompatActivity activity, @Nullable String videoPath) {
+    public ScreenRecordingManager(AppCompatActivity activity) {
         this.activity = activity;
-        if (videoPath != null) {
-            this.videoPath = videoPath;
-        } else {
-            this.videoPath = FIleOperation.getVideoFilePath();
-        }
         this.screenRecordLauncher = registerOpenFileLauncher();
     }
 
@@ -77,14 +67,8 @@ public class ScreenRecordingManager {
                         }
                         // 创建前台服务
                         Intent serviceIntent = new Intent(activity, ScreenRecordingService.class);
-                        serviceIntent.putExtra("code", Activity.RESULT_OK);
-                        serviceIntent.putExtra("data", data);
                         // 添加媒体投影数据
                         serviceIntent.putExtra("mediaProjectionData", data);
-                        // 添加文件路径参数
-                        serviceIntent.putExtra("videoPath", videoPath);
-                        // Log.e("Intent data", String.valueOf(data));
-                        // Log.e("Intent videoPath", videoPath);
                         // 启动服务
                         activity.startService(serviceIntent);
                     }
