@@ -20,6 +20,7 @@ import com.example.textdemo.biz.ScreenRecordingBiz;
 import com.example.textdemo.biz.SelectionRectBiz;
 import com.example.textdemo.databinding.ActivityMainBinding;
 import com.example.textdemo.dao.TextItemDao;
+import com.example.textdemo.service.FloatingWindowService;
 import com.example.textdemo.ui.ScreenSelectionView;
 import com.example.textdemo.utils.CheckPermission;
 import com.example.textdemo.utils.Constants;
@@ -48,6 +49,15 @@ public class MainActivity extends AppCompatActivity {
 
     // 屏幕录制活动结果处理程序
     private ActivityResultLauncher<Intent> screenRecordLauncher;
+
+    // 全局状态管理器中的权限授予监听器
+    GlobalStateManager.OnPermissionGrantedListener permissionGrantedListener;
+
+    // 全局状态管理器中的按钮2的点击事件回调监听器
+    GlobalStateManager.OnButton2ClickListener button2ClickListener;
+
+    // 屏幕选择视图
+    private ScreenSelectionView screenSelectionView;
 
     /**
      * 创建活动时调用的方法
@@ -110,21 +120,33 @@ public class MainActivity extends AppCompatActivity {
         // 初始化屏幕录制活动结果处理程序
         screenRecordLauncher = screenRecordingHelper.getScreenRecordingManager().getScreenRecordLauncher();
 
-        // 导入文件按钮点击事件
-        binding.btnOpenFile.setOnClickListener(v -> filePickerHelper.openFile());
-
-        // 录屏按钮点击事件
-        binding.btnStartRecording.setOnClickListener(v -> startScreenRecordingInternal());
-
-        // 停止录屏按钮点击事件
-        binding.btnStopRecording.setOnClickListener(v -> stopScreenRecordingInternal());
-
-        // 创建屏幕选择视图的点击事件回调
-        ScreenSelectionView.OnButton2ClickListener onButton2ClickListener = new ScreenSelectionView.OnButton2ClickListener() {
+        // 初始化全局状态管理器中的权限授予监听器
+        permissionGrantedListener = new GlobalStateManager.OnPermissionGrantedListener() {
             @Override
-            public void onButton2OCR() {
+            public void onPermissionGranted() {
+                // 获取ScreenSelectionView实例
+                screenSelectionView = FloatingWindowService.getScreenSelectionView();
+                // 切换按钮2的文本
+                screenSelectionView.toggleButton2Text();
                 // 启动屏幕录制OCR识别
                 startScreenRecordingInternal();
+                // 显示Toast提示
+                Toast.makeText(MainActivity.this, "已获取录制权限", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onPermissionDenied() {
+                // 显示Toast提示
+                Toast.makeText(MainActivity.this, "未获取录制权限", Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        // 初始化按钮2的点击事件回调监听器
+        button2ClickListener = new GlobalStateManager.OnButton2ClickListener() {
+            @Override
+            public void onButton2OCR() {
+                // 请求屏幕捕获权限
+                requestScreenCapturePermission();
             }
 
             @Override
@@ -135,17 +157,40 @@ public class MainActivity extends AppCompatActivity {
         };
 
         // 设置全局状态管理器中的按钮点击事件回调
-        GlobalStateManager.setOnButton2ClickListener(onButton2ClickListener);
+        GlobalStateManager.setButton2ClickListener(button2ClickListener);
+
+        // 导入文件按钮点击事件
+        binding.btnOpenFile.setOnClickListener(v -> filePickerHelper.openFile());
+
+        // 录屏按钮点击事件
+        binding.btnStartRecording.setOnClickListener(v -> startScreenRecordingInternal());
+
+        // 停止录屏按钮点击事件
+        binding.btnStopRecording.setOnClickListener(v -> stopScreenRecordingInternal());
 
         // 选择范围按钮点击事件
         binding.selectionRect.setOnClickListener(v -> SelectionRectBiz.addView(this, binding));
     }
 
     /**
+     * 请求屏幕捕获权限
+     */
+    private void requestScreenCapturePermission() {
+        if (!CheckPermission.isRecordingPermissionGranted(this)) {
+            CheckPermission.requestRecordingPermission(this, Constants.REQUEST_RECORDING_PERMISSIONS);
+            // 设置权限授予监听器
+            GlobalStateManager.setPermissionGrantedListener(permissionGrantedListener);
+        } else {
+            // 如果权限已经授予，执行权限授予监听器的onPermissionGranted方法
+            permissionGrantedListener.onPermissionGranted();
+        }
+    }
+
+    /**
      * 启动屏幕录制的内部方法
      */
     private void startScreenRecordingInternal() {
-        ScreenRecordingBiz.startScreenRecording(this, screenRecordLauncher, Constants.REQUEST_RECORDING_PERMISSIONS);
+        ScreenRecordingBiz.startScreenRecording(this, screenRecordLauncher);
     }
 
     /**
@@ -191,7 +236,9 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == Constants.REQUEST_RECORDING_PERMISSIONS) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // 权限已授予
-                Toast.makeText(this, "已获取录制权限", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(this, "已获取录制权限", Toast.LENGTH_SHORT).show();
+                // 通知全局状态管理器权限已授予
+                GlobalStateManager.notifyPermissionGranted();
             } else {
                 // 权限被拒绝
                 Toast.makeText(this, "未获取录制权限", Toast.LENGTH_SHORT).show();

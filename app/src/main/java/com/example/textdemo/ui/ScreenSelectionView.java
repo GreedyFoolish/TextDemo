@@ -64,15 +64,6 @@ public class ScreenSelectionView extends View {
     // 文本项数据访问对象
     private TextItemDao textItemDao;
 
-    // 按钮2点击事件回调
-    public interface OnButton2ClickListener {
-        // 识别按钮点击事件
-        void onButton2OCR();
-
-        // 暂停按钮点击事件
-        void onButton2Pause();
-    }
-
     public ScreenSelectionView(Context context) {
         super(context);
         this.context = context;
@@ -370,22 +361,27 @@ public class ScreenSelectionView extends View {
                     // 重新绘制
                     invalidate();
                 } else if (button2Rect.contains((int) startX, (int) startY)) {
-                    button2Pressed = !button2Pressed;
+                    /**
+                     * 当button2Pressed为false时，点击按钮2：
+                     *      首先请求录屏权限，当权限授予后。开始录屏操作并通过toggleButton2Text将button2Pressed设置为true
+                     * 当button2Pressed为true时，点击按钮2：
+                     *      执行暂停录屏操作，并通过toggleButton2Text将button2Pressed设置为false
+                     */
                     // 获取全局监听器
-                    OnButton2ClickListener listener = GlobalStateManager.getOnButton2ClickListener();
-                    if (listener != null) {
-                        if (button2Pressed) {
+                    GlobalStateManager.OnButton2ClickListener button2ClickListener = GlobalStateManager.getButton2ClickListener();
+                    if (button2ClickListener != null) {
+                        if (!button2Pressed) {
                             // 识别回调
-                            listener.onButton2OCR();
+                            button2ClickListener.onButton2OCR();
                         } else {
                             // 暂停回调
-                            listener.onButton2Pause();
+                            button2ClickListener.onButton2Pause();
+                            // 切换按钮2的文字
+                            toggleButton2Text();
                             // 停止悬浮框服务
                             stopFloatingWindowService();
                         }
                     }
-                    // 重新绘制
-                    invalidate();
                 }
                 break;
             case MotionEvent.ACTION_MOVE:
@@ -442,6 +438,13 @@ public class ScreenSelectionView extends View {
                 break;
         }
         return true;
+    }
+
+    // 切换按钮2的文字
+    public void toggleButton2Text() {
+        button2Pressed = !button2Pressed;
+        // 重新绘制
+        invalidate();
     }
 
     // 停止悬浮框服务

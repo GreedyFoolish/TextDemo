@@ -23,7 +23,7 @@ public class ScreenRecordingBiz {
     /**
      * 开始屏幕录制
      */
-    public static void startScreenRecording(Activity context, ActivityResultLauncher<Intent> screenRecordLauncher, int requestRecordingPermissions) {
+    public static void startScreenRecording(Activity context, ActivityResultLauncher<Intent> screenRecordLauncher) {
         if (CheckPermission.isRecordingPermissionGranted(context)) {
             // 初始化媒体投影管理器
             MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) context.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
@@ -34,7 +34,7 @@ public class ScreenRecordingBiz {
         } else {
             // 请求录制权限
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                CheckPermission.requestRecordingPermission(context, requestRecordingPermissions);
+                CheckPermission.requestRecordingPermission(context, Constants.REQUEST_RECORDING_PERMISSIONS);
             }
             Toast.makeText(context, "请授予录制权限", Toast.LENGTH_SHORT).show();
         }

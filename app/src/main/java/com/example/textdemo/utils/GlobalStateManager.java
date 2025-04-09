@@ -4,16 +4,54 @@ package com.example.textdemo.utils;
 import com.example.textdemo.ui.ScreenSelectionView;
 
 public class GlobalStateManager {
-    // 全局监听器
-    private static ScreenSelectionView.OnButton2ClickListener button2ClickListener;
+    // 请求录制权限回调接口监听器
+    public interface OnPermissionGrantedListener {
+        // 权限获取成功
+        void onPermissionGranted();
 
-    // 设置全局监听器
-    public static void setOnButton2ClickListener(ScreenSelectionView.OnButton2ClickListener listener) {
-        button2ClickListener = listener;
+        // 权限获取失败
+        void onPermissionDenied();
     }
 
-    // 获取全局监听器
-    public static ScreenSelectionView.OnButton2ClickListener getOnButton2ClickListener() {
+    // 按钮2点击事件回调接口监听器
+    public interface OnButton2ClickListener {
+        // 识别按钮点击事件
+        void onButton2OCR();
+
+        // 暂停按钮点击事件
+        void onButton2Pause();
+    }
+
+    // 请求录制权限回调接口监听器对象
+    private static OnPermissionGrantedListener permissionGrantedListener;
+
+    // 按钮2点击事件回调接口监听器对象
+    private static OnButton2ClickListener button2ClickListener;
+
+    // 通知权限获取成功
+    public static void notifyPermissionGranted() {
+        if (permissionGrantedListener != null) {
+            permissionGrantedListener.onPermissionGranted();
+        }
+    }
+
+    // 获取请求录制权限回调接口监听器对象
+    public static OnPermissionGrantedListener getPermissionGrantedListener() {
+        return permissionGrantedListener;
+    }
+
+    // 设置请求录制权限回调接口监听器对象
+    public static void setPermissionGrantedListener(OnPermissionGrantedListener permissionGrantedListener) {
+        GlobalStateManager.permissionGrantedListener = permissionGrantedListener;
+    }
+
+    // 获取按钮2点击事件回调接口监听器对象
+    public static OnButton2ClickListener getButton2ClickListener() {
         return button2ClickListener;
+    }
+
+    // 设置按钮2点击事件回调接口监听器对象
+    public static void setButton2ClickListener(OnButton2ClickListener button2ClickListener) {
+        GlobalStateManager.button2ClickListener = button2ClickListener;
     }
 }
