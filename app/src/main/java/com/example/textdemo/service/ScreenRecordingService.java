@@ -160,7 +160,6 @@ public class ScreenRecordingService extends Service {
 
             // 检查是否达到了处理间隔时间
             if (currentTime - lastProcessTime[0] >= Constants.PROCESS_INTERVAL_MS) {
-                Log.e("ScreenCapture", "processImage ++++++++++++");
                 lastProcessTime[0] = currentTime;
                 // 处理图像
                 processImage(reader.acquireLatestImage());
@@ -271,9 +270,10 @@ public class ScreenRecordingService extends Service {
                 // 使用 Tesseract OCR 进行处理
                 tessBaseAPI.setImage(croppedBitmap);
                 String result = tessBaseAPI.getUTF8Text();
-                Log.e("OCR Result", Objects.requireNonNullElse(result, "OCR 识别结果为空"));
-
-                // 处理 OCR 结果
+                if (result == null || result.isEmpty()) {
+                    Log.e("OCR Result", "识别失败，尝试重新处理");
+                    return;
+                }
                 handleOCRResult(result);
             }
         } catch (Exception e) {

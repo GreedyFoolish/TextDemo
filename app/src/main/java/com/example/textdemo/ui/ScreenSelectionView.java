@@ -301,7 +301,16 @@ public class ScreenSelectionView extends View {
      * @param result OCR结果
      */
     public void setOcrResult(String result) {
-        Log.e("setOcrResult", "ocrResultText: " + result);
+        Log.e("setOcrResult", "Received OCR result: " + result);
+        if (result == null || result.isEmpty()) {
+            Log.e("setOcrResult", "OCR 结果为空，跳过处理");
+            post(() -> {
+                ocrResultText = "OCR识别结果为空";
+                invalidate();
+            });
+            return;
+        }
+
         TextItem closestItem = TextItemDao.findClosestTextItem(result);
         if (closestItem != null) {
             String text = closestItem.getText();
@@ -323,6 +332,10 @@ public class ScreenSelectionView extends View {
             Log.e("setOcrResult", "最近的文本项：" + closestItem.getText());
         } else {
             Log.e("setOcrResult", "无匹配的文本项");
+            post(() -> {
+                ocrResultText = "OCR识别结果：" + result + "\nOCR匹配结果：无\nOCR匹配答案：无";
+                invalidate();
+            });
         }
     }
 
