@@ -26,6 +26,7 @@ import com.example.textdemo.utils.Constants;
 import com.example.textdemo.utils.FilePickerHelper;
 import com.example.textdemo.utils.GlobalStateManager;
 import com.example.textdemo.utils.ScreenRecordingHelper;
+import com.example.textdemo.utils.CheckSupportedFormats;
 
 import java.util.Arrays;
 
@@ -92,6 +93,9 @@ public class MainActivity extends AppCompatActivity {
         } else {
             Log.e("CheckPermission", "已授予SYSTEM_ALERT_WINDOW权限");
         }
+
+        // 检查相机支持的格式
+        // CheckSupportedFormats.CheckCameraSupportedFormats(this);
 
         // 初始化数据绑定
         binding = ActivityMainBinding.inflate(getLayoutInflater());
