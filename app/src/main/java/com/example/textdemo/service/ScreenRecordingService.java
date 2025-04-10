@@ -251,20 +251,10 @@ public class ScreenRecordingService extends Service {
         try (image) {
             // 如果图像格式为 RGBA_8888，则进行格式转换
             if (imageFormat == PixelFormat.RGBA_8888) {
-                // 创建一个新的 YUV_420_888 格式的 Image 对象
-                Image yuvImage = imageReader.acquireNextImage();
-                if (yuvImage != null) {
-                    rgbaToYuv420888(image, yuvImage);
-                    // 使用转换后的 YUV_420_888 图像进行后续处理
-                    bitmap = yuvToRgb(yuvImage);
-                    // 关闭图像以释放资源
-                    yuvImage.close();
-                } else {
-                    Log.e("processImage", "无法获取 YUV_420_888 格式的 Image 对象");
-                    // 关闭图像以释放资源
-                    image.close();
-                    return;
-                }
+                // 将 RGBA_8888 图像转换为 YUV_420_888 格式的字节数组
+                byte[] yuvData = rgbaToYuv420888(image);
+                // 创建一个新的 YUV_420_888 格式的 Bitmap
+                bitmap = yuvToRgb(yuvData, image.getWidth(), image.getHeight());
             } else if (imageFormat == ImageFormat.YUV_420_888) {
                 // 直接处理 YUV_420_888 格式的图像
                 bitmap = yuvToRgb(image);
@@ -316,19 +306,15 @@ public class ScreenRecordingService extends Service {
         }
     }
 
-
     /**
-     * 将 RGBA_8888 图像转换为 YUV_420_888 图像
+     * 将 RGBA_8888 图像转换为 YUV_420_888 格式的字节数组
      *
      * @param rgbaImage RGBA_8888 格式的 Image 对象
-     * @param yuvImage  YUV_420_888 格式的 Image 对象
+     * @return YUV_420_888 格式的字节数组
      */
-    private void rgbaToYuv420888(Image rgbaImage, Image yuvImage) {
+    private byte[] rgbaToYuv420888(Image rgbaImage) {
         if (rgbaImage.getFormat() != PixelFormat.RGBA_8888) {
             throw new IllegalArgumentException("Input image format must be RGBA_8888");
-        }
-        if (yuvImage.getFormat() != ImageFormat.YUV_420_888) {
-            throw new IllegalArgumentException("Output image format must be YUV_420_888");
         }
 
         int width = rgbaImage.getWidth();
@@ -340,27 +326,13 @@ public class ScreenRecordingService extends Service {
         int rgbaStride = rgbaPlane.getRowStride();
         int rgbaPixelStride = rgbaPlane.getPixelStride();
 
-        // 获取 YUV_420_888 的平面
-        Image.Plane[] yuvPlanes = yuvImage.getPlanes();
-        ByteBuffer yBuffer = yuvPlanes[0].getBuffer();
-        ByteBuffer uBuffer = yuvPlanes[1].getBuffer();
-        ByteBuffer vBuffer = yuvPlanes[2].getBuffer();
-
-        // 确保缓冲区有足够的空间
-        if (yBuffer.capacity() < width * height) {
-            throw new IllegalArgumentException("Y buffer is too small");
-        }
-        if (uBuffer.capacity() < (width / 2) * (height / 2)) {
-            throw new IllegalArgumentException("U buffer is too small");
-        }
-        if (vBuffer.capacity() < (width / 2) * (height / 2)) {
-            throw new IllegalArgumentException("V buffer is too small");
-        }
+        // 计算 YUV_420_888 的缓冲区大小
+        int ySize = width * height;
+        int uvSize = (width / 2) * (height / 2);
+        byte[] yuvData = new byte[ySize + uvSize * 2];
 
         // 清空缓冲区
-        yBuffer.clear();
-        uBuffer.clear();
-        vBuffer.clear();
+        rgbaBuffer.rewind();
 
         // 遍历每个像素，进行颜色空间转换
         for (int y = 0; y < height; y++) {
@@ -376,19 +348,47 @@ public class ScreenRecordingService extends Service {
                 int vValue = (int) (0.615 * r - 0.515 * g - 0.100 * b);
 
                 // 将 Y 值放入 Y 平面
-                yBuffer.put((byte) (yValue & 0xFF));
+                yuvData[y * width + x] = (byte) (yValue & 0xFF);
 
                 // 将 U 和 V 值放入 U 和 V 平面
                 if (x % 2 == 0 && y % 2 == 0) {
-                    uBuffer.put((byte) ((uValue + 128) & 0xFF));
-                    vBuffer.put((byte) ((vValue + 128) & 0xFF));
+                    int uvIndex = ySize + (y / 2) * (width / 2) + (x / 2);
+                    yuvData[uvIndex] = (byte) ((uValue + 128) & 0xFF);
+                    yuvData[uvIndex + uvSize] = (byte) ((vValue + 128) & 0xFF);
                 }
             }
         }
+
+        return yuvData;
+    }
+
+    /**
+     * 将 YUV_420_888 格式的字节数组转换为 RGB 格式的位图
+     *
+     * @param yuvData YUV_420_888 格式的字节数组
+     * @param width   图像宽度
+     * @param height  图像高度
+     * @return RGB 格式的位图
+     */
+    private Bitmap yuvToRgb(byte[] yuvData, int width, int height) {
+        YuvImage yuvImage = new YuvImage(
+                yuvData,
+                ImageFormat.NV21,
+                width,
+                height,
+                null
+        );
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        yuvImage.compressToJpeg(new Rect(0, 0, width, height), 100, out);
+        byte[] jpegData = out.toByteArray();
+
+        return BitmapFactory.decodeByteArray(jpegData, 0, jpegData.length);
     }
 
     /**
      * 将 YUV_420_888 图像转换为 RGB 格式的位图
+     *
      * @param image YUV_420_888 图像
      * @return RGB 格式的位图
      */
@@ -426,6 +426,7 @@ public class ScreenRecordingService extends Service {
 
     /**
      * 将 Y、U、V 数据合并为一个字节数组
+     *
      * @param y Y数据
      * @param u U数据
      * @param v V数据
