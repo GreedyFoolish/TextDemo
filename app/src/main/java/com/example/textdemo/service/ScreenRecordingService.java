@@ -10,8 +10,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.ImageFormat;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
+import android.graphics.YuvImage;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.Image;
@@ -36,6 +39,7 @@ import com.example.textdemo.ui.ScreenSelectionView;
 import com.example.textdemo.utils.FileOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -164,6 +168,9 @@ public class ScreenRecordingService extends Service {
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
         // 设置 ImageReader 的监听器
         imageReader.setOnImageAvailableListener(reader -> {
+            // 获取最新的图像
+            Image image = reader.acquireLatestImage();
+
             // 获取当前时间
             long currentTime = System.currentTimeMillis();
 
@@ -171,10 +178,9 @@ public class ScreenRecordingService extends Service {
             if (currentTime - lastProcessTime[0] >= Constants.PROCESS_INTERVAL_MS) {
                 lastProcessTime[0] = currentTime;
                 // 处理图像
-                processImage(reader.acquireLatestImage());
+                processImage(image);
             } else {
                 // 如果不处理当前帧，则关闭图像以释放资源
-                Image image = reader.acquireLatestImage();
                 if (image != null) {
                     image.close();
                 }
@@ -228,37 +234,46 @@ public class ScreenRecordingService extends Service {
      * @param image 图像
      */
     private void processImage(Image image) {
-        if (image == null || image.getPlanes().length == 0) {
+        if (image == null) {
+            Log.e("processImage", "传入的图像对象为 null");
+            return;
+        }
+        if (image.getPlanes().length == 0) {
             Log.e("processImage", "无效的图像或无图像平面");
+            // 关闭图像以释放资源
+            image.close();
             return;
         }
 
+        // 获取图像格式
+        int imageFormat = image.getFormat();
+
         try (image) {
-            // 获取图像平面
-            Image.Plane[] planes = image.getPlanes();
-            if (planes.length != 1) {
-                Log.e("processImage", "错误的图像平面数量：" + planes.length);
+            // 如果图像格式为 RGBA_8888，则进行格式转换
+            if (imageFormat == PixelFormat.RGBA_8888) {
+                // 创建一个新的 YUV_420_888 格式的 Image 对象
+                Image yuvImage = imageReader.acquireNextImage();
+                if (yuvImage != null) {
+                    rgbaToYuv420888(image, yuvImage);
+                    // 使用转换后的 YUV_420_888 图像进行后续处理
+                    bitmap = yuvToRgb(yuvImage);
+                    // 关闭图像以释放资源
+                    yuvImage.close();
+                } else {
+                    Log.e("processImage", "无法获取 YUV_420_888 格式的 Image 对象");
+                    // 关闭图像以释放资源
+                    image.close();
+                    return;
+                }
+            } else if (imageFormat == ImageFormat.YUV_420_888) {
+                // 直接处理 YUV_420_888 格式的图像
+                bitmap = yuvToRgb(image);
+            } else {
+                Log.e("processImage", "不支持的图像格式: " + imageFormat);
+                // 关闭图像以释放资源
+                image.close();
                 return;
             }
-
-            // 获取图像数据
-            ByteBuffer buffer = planes[0].getBuffer();
-            // 确保缓冲区有剩余数据
-            if (buffer.remaining() <= 0) {
-                Log.e("processImage", "空缓冲区");
-                return;
-            }
-            // 创建字节数组
-            byte[] data = new byte[buffer.remaining()];
-            // 将数据从缓冲区复制到字节数组
-            buffer.get(data);
-
-            if (bitmap == null || bitmap.isRecycled()) {
-                // 创建位图
-                bitmap = Bitmap.createBitmap(image.getWidth(), image.getHeight(), Bitmap.Config.ARGB_8888);
-            }
-            // 将数据复制到位图中
-            bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(data));
 
             // 指定区域的坐标（左上角和右下角）
             // 左上角 x 坐标
@@ -283,8 +298,12 @@ public class ScreenRecordingService extends Service {
                 String result = tessBaseAPI.getUTF8Text();
                 if (result == null || result.isEmpty()) {
                     Log.e("OCR Result", "识别失败，尝试重新处理");
+                    // 关闭图像以释放资源
+                    image.close();
                     return;
                 }
+
+                // 处理OCR识别结果
                 handleOCRResult(result);
 
                 // 保存裁剪后的位图到本地
@@ -296,6 +315,130 @@ public class ScreenRecordingService extends Service {
             Log.e("processImage", "处理图像时出错", e);
         }
     }
+
+
+    /**
+     * 将 RGBA_8888 图像转换为 YUV_420_888 图像
+     *
+     * @param rgbaImage RGBA_8888 格式的 Image 对象
+     * @param yuvImage  YUV_420_888 格式的 Image 对象
+     */
+    private void rgbaToYuv420888(Image rgbaImage, Image yuvImage) {
+        if (rgbaImage.getFormat() != PixelFormat.RGBA_8888) {
+            throw new IllegalArgumentException("Input image format must be RGBA_8888");
+        }
+        if (yuvImage.getFormat() != ImageFormat.YUV_420_888) {
+            throw new IllegalArgumentException("Output image format must be YUV_420_888");
+        }
+
+        int width = rgbaImage.getWidth();
+        int height = rgbaImage.getHeight();
+
+        // 获取 RGBA_8888 的像素数据
+        Image.Plane rgbaPlane = rgbaImage.getPlanes()[0];
+        ByteBuffer rgbaBuffer = rgbaPlane.getBuffer();
+        int rgbaStride = rgbaPlane.getRowStride();
+        int rgbaPixelStride = rgbaPlane.getPixelStride();
+
+        // 获取 YUV_420_888 的平面
+        Image.Plane[] yuvPlanes = yuvImage.getPlanes();
+        ByteBuffer yBuffer = yuvPlanes[0].getBuffer();
+        ByteBuffer uBuffer = yuvPlanes[1].getBuffer();
+        ByteBuffer vBuffer = yuvPlanes[2].getBuffer();
+
+        // 确保缓冲区有足够的空间
+        if (yBuffer.capacity() < width * height) {
+            throw new IllegalArgumentException("Y buffer is too small");
+        }
+        if (uBuffer.capacity() < (width / 2) * (height / 2)) {
+            throw new IllegalArgumentException("U buffer is too small");
+        }
+        if (vBuffer.capacity() < (width / 2) * (height / 2)) {
+            throw new IllegalArgumentException("V buffer is too small");
+        }
+
+        // 清空缓冲区
+        yBuffer.clear();
+        uBuffer.clear();
+        vBuffer.clear();
+
+        // 遍历每个像素，进行颜色空间转换
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgbaOffset = (y * rgbaStride) + (x * rgbaPixelStride);
+                int r = rgbaBuffer.get(rgbaOffset) & 0xFF;
+                int g = rgbaBuffer.get(rgbaOffset + 1) & 0xFF;
+                int b = rgbaBuffer.get(rgbaOffset + 2) & 0xFF;
+
+                // 计算 YUV 值
+                int yValue = (int) (0.299 * r + 0.587 * g + 0.114 * b);
+                int uValue = (int) (-0.147 * r - 0.289 * g + 0.436 * b);
+                int vValue = (int) (0.615 * r - 0.515 * g - 0.100 * b);
+
+                // 将 Y 值放入 Y 平面
+                yBuffer.put((byte) (yValue & 0xFF));
+
+                // 将 U 和 V 值放入 U 和 V 平面
+                if (x % 2 == 0 && y % 2 == 0) {
+                    uBuffer.put((byte) ((uValue + 128) & 0xFF));
+                    vBuffer.put((byte) ((vValue + 128) & 0xFF));
+                }
+            }
+        }
+    }
+
+    /**
+     * 将 YUV_420_888 图像转换为 RGB 格式的位图
+     * @param image YUV_420_888 图像
+     * @return RGB 格式的位图
+     */
+    private Bitmap yuvToRgb(Image image) {
+        ByteBuffer yBuffer = image.getPlanes()[0].getBuffer();
+        ByteBuffer uBuffer = image.getPlanes()[1].getBuffer();
+        ByteBuffer vBuffer = image.getPlanes()[2].getBuffer();
+
+        int ySize = yBuffer.remaining();
+        int uSize = uBuffer.remaining();
+        int vSize = vBuffer.remaining();
+
+        byte[] yData = new byte[ySize];
+        byte[] uData = new byte[uSize];
+        byte[] vData = new byte[vSize];
+
+        yBuffer.get(yData);
+        uBuffer.get(uData);
+        vBuffer.get(vData);
+
+        YuvImage yuvImage = new YuvImage(
+                combineYuvData(yData, uData, vData),
+                ImageFormat.NV21,
+                image.getWidth(),
+                image.getHeight(),
+                null
+        );
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        yuvImage.compressToJpeg(new Rect(0, 0, image.getWidth(), image.getHeight()), 100, out);
+        byte[] jpegData = out.toByteArray();
+
+        return BitmapFactory.decodeByteArray(jpegData, 0, jpegData.length);
+    }
+
+    /**
+     * 将 Y、U、V 数据合并为一个字节数组
+     * @param y Y数据
+     * @param u U数据
+     * @param v V数据
+     * @return 合并后的字节数组
+     */
+    private byte[] combineYuvData(byte[] y, byte[] u, byte[] v) {
+        byte[] result = new byte[y.length + u.length + v.length];
+        System.arraycopy(y, 0, result, 0, y.length);
+        System.arraycopy(u, 0, result, y.length, u.length);
+        System.arraycopy(v, 0, result, y.length + u.length, v.length);
+        return result;
+    }
+
 
     private void handleOCRResult(String result) {
         // 设置OCR结果到ScreenSelectionView
