@@ -69,6 +69,8 @@ public class ScreenRecordingService extends Service {
     private RectDatabaseHelper dbHelper;
     // 保存的矩形位置信息
     private Rect savedRect;
+    // 状态栏高度
+    private int statusBarHeight = 0;
 
     @SuppressLint("WrongConstant")
     @Override
@@ -119,6 +121,11 @@ public class ScreenRecordingService extends Service {
         int height = displayMetrics.heightPixels;
         // 获取屏幕的密度（每英寸点数，DPI）
         int dpi = displayMetrics.densityDpi;
+        // 获取状态栏高度
+        @SuppressLint("InternalInsetResource") int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            statusBarHeight = getResources().getDimensionPixelSize(resourceId);
+        }
 
         // 复制 Tesseract OCR 数据
         FileOperation.copyTessData(this, new FileOperation.CopyCallback() {
@@ -257,11 +264,11 @@ public class ScreenRecordingService extends Service {
             // 左上角 x 坐标
             int left = Math.max(savedRect.left, 0);
             // 左上角 y 坐标
-            int top = Math.max(savedRect.top, 0);
+            int top = Math.max(savedRect.top, 0) + statusBarHeight;
             // 右下角 x 坐标
             int right = Math.min(savedRect.right, image.getWidth());
             // 右下角 y 坐标
-            int bottom = Math.min(savedRect.bottom, image.getHeight());
+            int bottom = Math.min(savedRect.bottom, image.getHeight()) + statusBarHeight;
 
             // 裁剪位图
             croppedBitmap = Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top);

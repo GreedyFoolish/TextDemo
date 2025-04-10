@@ -222,7 +222,7 @@ public class ScreenSelectionView extends View {
                 // 计算文字横轴位置
                 float x = ocrResultRect.left + Constants.BUTTON_SPACE;
 
-                while (line.length() > 0) {
+                while (!line.isEmpty()) {
                     // 找到可以容纳的最大子字符串
                     int endIndex = findEndIndex(line, paint, availableWidth);
                     String subLine = line.substring(0, endIndex);
@@ -250,7 +250,7 @@ public class ScreenSelectionView extends View {
                 // 计算文字横轴位置
                 float x = ocrResultRect.left + Constants.BUTTON_SPACE;
 
-                while (line.length() > 0) {
+                while (!line.isEmpty()) {
                     // 找到可以容纳的最大子字符串
                     int endIndex = findEndIndex(line, paint, availableWidth);
                     String subLine = line.substring(0, endIndex);
