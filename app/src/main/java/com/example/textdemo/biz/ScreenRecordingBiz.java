@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -40,9 +41,13 @@ public class ScreenRecordingBiz {
      * 停止屏幕录制
      */
     public static void stopScreenRecording(Activity context) {
-        // 创建一个停止ScreenRecordingService的Intent
-        Intent serviceIntent = new Intent(context, ScreenRecordingService.class);
-        // 停止ScreenRecordingService
-        context.stopService(serviceIntent);
+        try {
+            // 创建一个停止ScreenRecordingService的Intent
+            Intent serviceIntent = new Intent(context, ScreenRecordingService.class);
+            // 停止ScreenRecordingService
+            context.stopService(serviceIntent);
+        } catch (Exception e) {
+            Log.e("ScreenRecordingBiz", "停止屏幕录制时出错", e);
+        }
     }
 }

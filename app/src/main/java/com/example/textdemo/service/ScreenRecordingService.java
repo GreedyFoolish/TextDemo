@@ -259,6 +259,13 @@ public class ScreenRecordingService extends Service {
         }
 
         try (image) {
+            // 检查服务是否已经停止
+            if (mediaProjection == null || virtualDisplay == null) {
+                Log.e("processImage", "服务已停止，不再处理图像");
+                image.close();
+                return;
+            }
+
             // 获取图像格式
             int imageFormat = image.getFormat();
 
@@ -342,9 +349,20 @@ public class ScreenRecordingService extends Service {
         } catch (Exception e) {
             Log.e("processImage", "处理图像时发生错误", e);
         } finally {
-            // 释放资源
-            if (bitmap != null && bitmap != croppedBitmap) {
-                bitmap.recycle();
+            // 安全关闭图像
+            try {
+                image.close();
+            } catch (Exception e) {
+                Log.e("processImage", "关闭图像时出错", e);
+            }
+
+            // 安全回收位图
+            try {
+                if (bitmap != null && bitmap != croppedBitmap) {
+                    bitmap.recycle();
+                }
+            } catch (Exception e) {
+                Log.e("processImage", "回收位图时出错", e);
             }
         }
     }
@@ -447,53 +465,72 @@ public class ScreenRecordingService extends Service {
      * 停止媒体投影和释放相关资源
      */
     private synchronized void stopMediaProjection() {
-        if (mediaProjection != null) {
-            // 停止媒体投影
-            mediaProjection.stop();
-            // 释放媒体投影
-            mediaProjection = null;
-        }
-        if (virtualDisplay != null) {
-            // 释放虚拟显示
-            virtualDisplay.release();
-            // 释放虚拟显示的资源
-            virtualDisplay = null;
-        }
-        if (tessBaseAPI != null) {
-            // 停止Tesseract OCR
-            tessBaseAPI.end();
-            // 释放Tesseract OCR
-            tessBaseAPI = null;
-        }
-        if (imageReader != null) {
-            // 关闭图像读取器
-            imageReader.close();
-            // 释放图像读取器
-            imageReader = null;
-        }
-        if (imageHandlerThread != null) {
-            // 关闭图像处理线程
-            imageHandlerThread.quitSafely();
-            try {
-                // 等待图像处理线程完成
-                imageHandlerThread.join(5000);
-            } catch (InterruptedException e) {
-                Log.e(TAG, "图像处理线程中断", e);
+        try {
+            // 首先停止接收新的图像
+            if (imageReader != null) {
+                imageReader.setOnImageAvailableListener(null, null);
             }
-            // 释放图像处理线程
-            imageHandlerThread = null;
-        }
-        if (bitmap != null && !bitmap.isRecycled()) {
-            // 释放位图并回收内存
-            bitmap.recycle();
-            // 将位图设置为 null
-            bitmap = null;
-        }
-        if (croppedBitmap != null && !croppedBitmap.isRecycled()) {
-            // 释放裁剪位图并回收内存
-            croppedBitmap.recycle();
-            // 将裁剪位图设置为 null
-            croppedBitmap = null;
+
+            // 等待一小段时间，确保当前处理完成
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Log.e(TAG, "线程中断", e);
+            }
+
+            // 停止媒体投影
+            if (mediaProjection != null) {
+                mediaProjection.stop();
+                mediaProjection = null;
+            }
+
+            // 释放虚拟显示
+            if (virtualDisplay != null) {
+                virtualDisplay.release();
+                virtualDisplay = null;
+            }
+
+            // 停止Tesseract OCR
+            if (tessBaseAPI != null) {
+                try {
+                    tessBaseAPI.end();
+                } catch (Exception e) {
+                    Log.e(TAG, "释放tessBaseAPI时出错", e);
+                }
+                tessBaseAPI = null;
+            }
+
+            // 关闭图像读取器
+            if (imageReader != null) {
+                imageReader.close();
+                imageReader = null;
+            }
+
+            // 关闭图像处理线程
+            if (imageHandlerThread != null) {
+                imageHandlerThread.quitSafely();
+                try {
+                    // 等待图像处理线程完成
+                    imageHandlerThread.join(1000);
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "图像处理线程中断", e);
+                }
+                imageHandlerThread = null;
+            }
+
+            // 释放位图
+            if (bitmap != null && !bitmap.isRecycled()) {
+                bitmap.recycle();
+                bitmap = null;
+            }
+
+            // 释放裁剪位图
+            if (croppedBitmap != null && !croppedBitmap.isRecycled()) {
+                croppedBitmap.recycle();
+                croppedBitmap = null;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "停止媒体投影时出错", e);
         }
     }
 
