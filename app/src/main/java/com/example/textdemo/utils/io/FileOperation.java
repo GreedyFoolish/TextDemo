@@ -2,8 +2,10 @@ package com.example.textdemo.utils.io;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.Bitmap.CompressFormat;
+import android.os.Environment;
 import android.util.Log;
+
+import androidx.annotation.Nullable;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -121,19 +123,24 @@ public class FileOperation {
     }
 
     /**
-     * 保存 Bitmap 到指定路径
+     * 保存 Bitmap 到文件
      *
-     * @param bitmap   要保存的 Bitmap 对象
-     * @param filePath 文件保存路径
+     * @param bitmap   要保存的 Bitmap
+     * @param filePath 文件路径，如果为 null，则默认保存到 Pictures 目录下
      */
-    public static void saveBitmapToFile(Bitmap bitmap, String filePath) {
-        File file = new File(filePath);
-        try (FileOutputStream out = new FileOutputStream(file)) {
-            Log.e("saveBitmapToFile", "正在保存到: " + filePath);
-            // 将 Bitmap 保存为 PNG 文件，质量为 100
-            bitmap.compress(CompressFormat.PNG, 100, out);
+    public static void saveBitmapToFile(Bitmap bitmap, @Nullable String filePath) {
+        if (filePath == null) {
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                    .getAbsolutePath() + File.separator + timestamp + "_debug.png";
+        }
+        try {
+            FileOutputStream fos = new FileOutputStream(filePath);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+            fos.close();
+            Log.e("Debug", "保存调试图像到: " + filePath);
         } catch (IOException e) {
-            Log.e("saveBitmapToFile", "保存 Bitmap 到文件时出错", e);
+            Log.e("Debug", "保存调试图像失败", e);
         }
     }
 

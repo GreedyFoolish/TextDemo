@@ -10,16 +10,12 @@ import android.graphics.YuvImage;
 import android.hardware.display.VirtualDisplay;
 import android.media.Image;
 import android.media.projection.MediaProjection;
-import android.os.Environment;
 import android.util.Log;
 
 import com.example.textdemo.ui.view.ScreenSelectionView;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class ImageProcessor {
@@ -139,7 +135,7 @@ public class ImageProcessor {
                     // 处理OCR识别结果
                     handleOCRResult(result);
                     // 保存裁剪后的位图到本地（用于调试）
-                    // saveDebugImage(croppedBitmap);
+                    // FileOperation.saveBitmapToFile(croppedBitmap,null);
                 } else {
                     Log.e("OCR Result", "识别结果为空");
                 }
@@ -225,27 +221,6 @@ public class ImageProcessor {
 
         return BitmapFactory.decodeByteArray(jpegData, 0, jpegData.length);
     }
-
-    /**
-     * 保存调试图像
-     *
-     * @param bitmap 位图
-     */
-    private void saveDebugImage(Bitmap bitmap) {
-        String timestamp = String.valueOf(System.currentTimeMillis());
-        String filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-                .getAbsolutePath() + File.separator + timestamp + "_debug.png";
-
-        try {
-            FileOutputStream fos = new FileOutputStream(filePath);
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-            fos.close();
-            Log.d("Debug", "保存调试图像到: " + filePath);
-        } catch (IOException e) {
-            Log.e("Debug", "保存调试图像失败", e);
-        }
-    }
-
 
     /**
      * 处理 OCR 结果

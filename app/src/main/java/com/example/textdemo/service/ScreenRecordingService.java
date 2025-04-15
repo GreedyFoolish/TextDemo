@@ -168,7 +168,7 @@ public class ScreenRecordingService extends Service {
                 width, height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 imageReader.getSurface(), null, null);
         // 初始化 ImageProcessor
-        imageProcessor = new ImageProcessor(this, tessBaseAPI, savedRect, statusBarHeight,mediaProjection,virtualDisplay);
+        imageProcessor = new ImageProcessor(this, tessBaseAPI, savedRect, statusBarHeight, mediaProjection, virtualDisplay);
 
         // 在类中添加一个成员变量来记录上一次处理的时间
         final long[] lastProcessTime = {0};
