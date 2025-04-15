@@ -1,4 +1,6 @@
-package com.example.textdemo.entity;
+package com.example.textdemo.data.model;
+
+import androidx.annotation.NonNull;
 
 public class TextItem {
     private long id;
@@ -34,6 +36,7 @@ public class TextItem {
         this.res = res;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "TextItem{" +

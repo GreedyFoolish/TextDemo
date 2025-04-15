@@ -1,4 +1,4 @@
-package com.example.textdemo.utils;
+package com.example.textdemo.utils.common;
 
 public class OffsetUtils {
 

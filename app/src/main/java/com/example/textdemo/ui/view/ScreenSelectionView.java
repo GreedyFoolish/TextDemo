@@ -1,4 +1,4 @@
-package com.example.textdemo.ui;
+package com.example.textdemo.ui.view;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -17,13 +17,13 @@ import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 
 import com.example.textdemo.R;
-import com.example.textdemo.dao.TextItemDao;
-import com.example.textdemo.entity.TextItem;
+import com.example.textdemo.data.dao.TextItemDao;
+import com.example.textdemo.data.model.TextItem;
 import com.example.textdemo.service.FloatingWindowService;
-import com.example.textdemo.utils.Constants;
-import com.example.textdemo.utils.GlobalStateManager;
-import com.example.textdemo.utils.OffsetUtils;
-import com.example.textdemo.utils.RectDatabaseHelper;
+import com.example.textdemo.config.Constants;
+import com.example.textdemo.utils.common.GlobalStateManager;
+import com.example.textdemo.utils.common.OffsetUtils;
+import com.example.textdemo.data.database.RectanglesDatabaseHelper;
 
 import java.util.Objects;
 
@@ -37,7 +37,7 @@ public class ScreenSelectionView extends View {
     // 画笔
     private Paint paint;
     // 数据库操作
-    RectDatabaseHelper dbHelper;
+    RectanglesDatabaseHelper dbHelper;
     // 选择区域
     private Rect selectionRect;
     // 是否正在调整
@@ -96,11 +96,11 @@ public class ScreenSelectionView extends View {
         // 设置画笔宽度
         paint.setStrokeWidth(5);
         // 初始化数据库操作
-        dbHelper = new RectDatabaseHelper(context);
+        dbHelper = new RectanglesDatabaseHelper(context);
         // 获取数据库
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         // 检查表是否存在
-        if (!dbHelper.tableExists(db, RectDatabaseHelper.getTABLE_RECTANGLES())) {
+        if (!dbHelper.tableExists(db, RectanglesDatabaseHelper.getTABLE_RECTANGLES())) {
             // 如果表不存在，onCreate 方法会自动创建表
             dbHelper.onCreate(db);
             // 初始化一条数据

@@ -1,7 +1,5 @@
-package com.example.textdemo.utils;
+package com.example.textdemo.utils.common;
 
-
-import com.example.textdemo.ui.ScreenSelectionView;
 
 public class GlobalStateManager {
     // 请求录制权限回调接口监听器

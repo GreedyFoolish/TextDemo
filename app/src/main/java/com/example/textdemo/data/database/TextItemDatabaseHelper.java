@@ -1,10 +1,10 @@
-package com.example.textdemo.utils;
+package com.example.textdemo.data.database;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
-public class DatabaseHelper extends SQLiteOpenHelper {
+public class TextItemDatabaseHelper extends SQLiteOpenHelper {
 
     // 数据库名称
     private static final String DATABASE_NAME = "app_database.db";
@@ -25,7 +25,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     COLUMN_TEXT + " TEXT, " +
                     COLUMN_RES + " INTEGER)";
 
-    public DatabaseHelper(Context context) {
+    public TextItemDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 

@@ -1,4 +1,4 @@
-package com.example.textdemo;
+package com.example.textdemo.ui.activity;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -16,17 +16,17 @@ import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
+import com.example.textdemo.R;
 import com.example.textdemo.biz.ScreenRecordingBiz;
 import com.example.textdemo.biz.SelectionRectBiz;
 import com.example.textdemo.databinding.ActivityMainBinding;
 import com.example.textdemo.service.FloatingWindowService;
-import com.example.textdemo.ui.ScreenSelectionView;
-import com.example.textdemo.utils.CheckPermission;
-import com.example.textdemo.utils.Constants;
-import com.example.textdemo.utils.FilePickerHelper;
-import com.example.textdemo.utils.GlobalStateManager;
-import com.example.textdemo.utils.ScreenRecordingHelper;
-import com.example.textdemo.utils.CheckSupportedFormats;
+import com.example.textdemo.ui.view.ScreenSelectionView;
+import com.example.textdemo.utils.common.CheckPermission;
+import com.example.textdemo.config.Constants;
+import com.example.textdemo.utils.io.FilePickerHelper;
+import com.example.textdemo.utils.common.GlobalStateManager;
+import com.example.textdemo.utils.io.ScreenRecordingHelper;
 
 import java.util.Arrays;
 

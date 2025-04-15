@@ -11,7 +11,7 @@ import android.view.WindowManager;
 
 import androidx.annotation.Nullable;
 
-import com.example.textdemo.ui.ScreenSelectionView;
+import com.example.textdemo.ui.view.ScreenSelectionView;
 
 public class FloatingWindowService extends Service {
 

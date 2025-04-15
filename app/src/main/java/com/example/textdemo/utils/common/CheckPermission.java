@@ -1,4 +1,4 @@
-package com.example.textdemo.utils;
+package com.example.textdemo.utils.common;
 
 import android.Manifest;
 import android.app.Activity;

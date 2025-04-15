@@ -11,8 +11,8 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 
 import com.example.textdemo.service.ScreenRecordingService;
-import com.example.textdemo.utils.CheckPermission;
-import com.example.textdemo.utils.Constants;
+import com.example.textdemo.utils.common.CheckPermission;
+import com.example.textdemo.config.Constants;
 
 public class ScreenRecordingBiz {
 

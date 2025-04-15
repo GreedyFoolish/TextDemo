@@ -1,4 +1,4 @@
-package com.example.textdemo.utils;
+package com.example.textdemo.utils.io;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -12,8 +12,8 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity; // 修改此处
 
-import com.example.textdemo.entity.TextItem;
-import com.example.textdemo.dao.TextItemDao;
+import com.example.textdemo.data.model.TextItem;
+import com.example.textdemo.data.dao.TextItemDao;
 
 import java.io.BufferedReader;
 import java.io.IOException;

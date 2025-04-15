@@ -33,10 +33,10 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.example.textdemo.R;
-import com.example.textdemo.utils.Constants;
-import com.example.textdemo.utils.RectDatabaseHelper;
-import com.example.textdemo.ui.ScreenSelectionView;
-import com.example.textdemo.utils.FileOperation;
+import com.example.textdemo.config.Constants;
+import com.example.textdemo.data.database.RectanglesDatabaseHelper;
+import com.example.textdemo.ui.view.ScreenSelectionView;
+import com.example.textdemo.utils.io.FileOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
 import java.io.ByteArrayOutputStream;
@@ -74,7 +74,7 @@ public class ScreenRecordingService extends Service {
     // 屏幕选择视图
     private ScreenSelectionView screenSelectionView;
     // 数据库操作
-    private RectDatabaseHelper dbHelper;
+    private RectanglesDatabaseHelper dbHelper;
     // 保存的矩形位置信息
     private Rect savedRect;
     // 状态栏高度
@@ -161,7 +161,7 @@ public class ScreenRecordingService extends Service {
         });
 
         // 初始化数据库操作
-        dbHelper = new RectDatabaseHelper(this);
+        dbHelper = new RectanglesDatabaseHelper(this);
         // 从数据库中获取保存的矩形位置信息，如果没有找到，则使用默认的矩形位置信息
         savedRect = Objects.requireNonNullElseGet(dbHelper.getRectangle(1), () -> new Rect(100, 100, 400, 400));
 

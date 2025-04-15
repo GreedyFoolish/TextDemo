@@ -1,4 +1,4 @@
-package com.example.textdemo.utils;
+package com.example.textdemo.config;
 
 public class Constants {
     // 请求码：读取外部存储权限
