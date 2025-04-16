@@ -105,11 +105,39 @@ public class RectanglesDatabaseHelper extends SQLiteOpenHelper {
         db.update(TABLE_RECTANGLES, values, selection, selectionArgs);
     }
 
+    public static String getDATABASE_NAME() {
+        return DATABASE_NAME;
+    }
+
+    public static int getDATABASE_VERSION() {
+        return DATABASE_VERSION;
+    }
+
     public static String getTABLE_RECTANGLES() {
         return TABLE_RECTANGLES;
     }
 
-    public static String getColumnId() {
+    public static String getCOLUMN_ID() {
         return COLUMN_ID;
+    }
+
+    public static String getCOLUMN_LEFT() {
+        return COLUMN_LEFT;
+    }
+
+    public static String getCOLUMN_TOP() {
+        return COLUMN_TOP;
+    }
+
+    public static String getCOLUMN_RIGHT() {
+        return COLUMN_RIGHT;
+    }
+
+    public static String getCOLUMN_BOTTOM() {
+        return COLUMN_BOTTOM;
+    }
+
+    public static String[] getCOLUMN_ARRAY() {
+        return COLUMN_ARRAY;
     }
 }

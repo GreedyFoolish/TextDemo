@@ -39,4 +39,28 @@ public class TextItemDatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
         onCreate(db);
     }
+
+    public static String getCOLUMN_TEXT() {
+        return COLUMN_TEXT;
+    }
+
+    public static String getDATABASE_NAME() {
+        return DATABASE_NAME;
+    }
+
+    public static int getDATABASE_VERSION() {
+        return DATABASE_VERSION;
+    }
+
+    public static String getTABLE_NAME() {
+        return TABLE_NAME;
+    }
+
+    public static String getCOLUMN_ID() {
+        return COLUMN_ID;
+    }
+
+    public static String getCOLUMN_RES() {
+        return COLUMN_RES;
+    }
 }
