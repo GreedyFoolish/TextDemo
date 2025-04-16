@@ -36,6 +36,7 @@ public class FilePickerManager {
     }
 
     private ActivityResultLauncher<Intent> registerOpenFileLauncher() {
+        TextItemDao textItemD = new TextItemDao(activity);
         return activity.registerForActivityResult( // 此处不再报错
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -49,14 +50,14 @@ public class FilePickerManager {
                                 if (itemList != null) {
                                     Log.e("FilePickerManager", "所有数据项: " + itemList);
                                     for (TextItem item : itemList) {
-                                        long id = TextItemDao.insertItem(item);
+                                        long id = textItemD.insertItem(item);
                                         if (id != -1) {
                                             Toast.makeText(activity, "数据导入成功", Toast.LENGTH_SHORT).show();
                                         } else {
                                             Toast.makeText(activity, "数据导入失败", Toast.LENGTH_SHORT).show();
                                         }
                                     }
-                                    List<TextItem> allItems = TextItemDao.getAllItems();
+                                    List<TextItem> allItems = textItemD.getAllItems();
                                     for (TextItem item : allItems) {
                                         System.out.println(item);
                                     }

@@ -5,15 +5,9 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 public class TextItemDatabaseHelper extends SQLiteOpenHelper {
-
-    // 数据库名称
     private static final String DATABASE_NAME = "app_database.db";
-    // 数据库版本
     private static final int DATABASE_VERSION = 1;
-
-    // 表名
     public static final String TABLE_NAME = "text_items";
-    // 表的列名
     public static final String COLUMN_ID = "id";
     public static final String COLUMN_TEXT = "text";
     public static final String COLUMN_RES = "res";
@@ -40,27 +34,23 @@ public class TextItemDatabaseHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    public static String getCOLUMN_TEXT() {
-        return COLUMN_TEXT;
-    }
-
-    public static String getDATABASE_NAME() {
-        return DATABASE_NAME;
-    }
-
-    public static int getDATABASE_VERSION() {
+    public int getDATABASE_VERSION() {
         return DATABASE_VERSION;
     }
 
-    public static String getTABLE_NAME() {
+    public String getTABLE_NAME() {
         return TABLE_NAME;
     }
 
-    public static String getCOLUMN_ID() {
+    public String getCOLUMN_ID() {
         return COLUMN_ID;
     }
 
-    public static String getCOLUMN_RES() {
+    public String getCOLUMN_TEXT() {
+        return COLUMN_TEXT;
+    }
+
+    public String getCOLUMN_RES() {
         return COLUMN_RES;
     }
 }

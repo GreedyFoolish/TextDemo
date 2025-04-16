@@ -12,54 +12,77 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TextItemDao {
-
-    private static TextItemDatabaseHelper dbHelper;
+    private final TextItemDatabaseHelper dbHelper;
+    private final String TABLE_NAME;
+    private final String COLUMN_ID;
+    private final String COLUMN_TEXT;
+    private final String COLUMN_RES;
 
     public TextItemDao(Context context) {
         dbHelper = new TextItemDatabaseHelper(context);
+        TABLE_NAME = dbHelper.getTABLE_NAME();
+        COLUMN_ID = dbHelper.getCOLUMN_ID();
+        COLUMN_TEXT = dbHelper.getCOLUMN_TEXT();
+        COLUMN_RES = dbHelper.getCOLUMN_RES();
     }
 
-    // 插入数据
-    public static long insertItem(TextItem textItem) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(TextItemDatabaseHelper.COLUMN_TEXT, textItem.getText());
-        values.put(TextItemDatabaseHelper.COLUMN_RES, textItem.isRes() ? 1 : 0);
-        long id = db.insert(TextItemDatabaseHelper.TABLE_NAME, null, values);
-        db.close();
-        return id;
-    }
-
-    // 查询所有数据
-    public static List<TextItem> getAllItems() {
-        List<TextItem> itemList = new ArrayList<>();
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        Cursor cursor = db.query(
-                TextItemDatabaseHelper.TABLE_NAME,
-                new String[]{TextItemDatabaseHelper.COLUMN_ID, TextItemDatabaseHelper.COLUMN_TEXT, TextItemDatabaseHelper.COLUMN_RES},
-                null,
-                null,
-                null,
-                null,
-                null
-        );
-
-        if (cursor.moveToFirst()) {
-            do {
-                TextItem item = new TextItem();
-                item.setId(cursor.getInt(cursor.getColumnIndexOrThrow(TextItemDatabaseHelper.COLUMN_ID)));
-                item.setText(cursor.getString(cursor.getColumnIndexOrThrow(TextItemDatabaseHelper.COLUMN_TEXT)));
-                item.setRes(cursor.getInt(cursor.getColumnIndexOrThrow(TextItemDatabaseHelper.COLUMN_RES)) == 1);
-                itemList.add(item);
-            } while (cursor.moveToNext());
+    /**
+     * 插入一条数据
+     *
+     * @param textItem 文本项
+     * @return 插入成功返回新行的ID，失败返回-1
+     */
+    public long insertItem(TextItem textItem) {
+        try (SQLiteDatabase db = dbHelper.getWritableDatabase()) {
+            ContentValues values = new ContentValues();
+            values.put(COLUMN_TEXT, textItem.getText());
+            values.put(COLUMN_RES, textItem.isRes() ? 1 : 0);
+            return db.insert(TABLE_NAME, null, values);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return -1;
         }
+    }
 
-        cursor.close();
-        db.close();
+    /**
+     * 查询所有文本项
+     *
+     * @return 所有文本项
+     */
+    public List<TextItem> getAllItems() {
+        List<TextItem> itemList = new ArrayList<>();
+        try (SQLiteDatabase db = dbHelper.getReadableDatabase();
+             Cursor cursor = db.query(
+                     TABLE_NAME,
+                     new String[]{COLUMN_ID, COLUMN_TEXT, COLUMN_RES},
+                     null,
+                     null,
+                     null,
+                     null,
+                     null)) {
+
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    TextItem item = new TextItem();
+                    item.setId(cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID)));
+                    item.setText(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TEXT)));
+                    item.setRes(cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_RES)) == 1);
+                    itemList.add(item);
+                } while (cursor.moveToNext());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return itemList;
     }
 
-    // 计算 Levenshtein 距离
+    /**
+     * 计算 Levenshtein 距离
+     *
+     * @param s1 字符串1
+     * @param s2 字符串2
+     * @return Levenshtein 距离
+     */
     private static int levenshteinDistance(String s1, String s2) {
         int[][] dp = new int[s1.length() + 1][s2.length() + 1];
 
@@ -81,15 +104,33 @@ public class TextItemDao {
         return dp[s1.length()][s2.length()];
     }
 
-    // 根据输入文本和数据库中的文本项，找到最接近的文本项。
-    // 基于 Levenshtein 距离，计算输入文本与数据库中每个文本项的距离，并返回距离最小的文本项。
-    public static TextItem findClosestTextItem(String inputText) {
+    /**
+     * 根据输入文本和数据库中的文本项，找到最接近的文本项。
+     *
+     * @param inputText 输入的文本
+     * @return 最接近的文本项，如果没有找到匹配的文本项，则返回 null。
+     */
+    public TextItem findClosestTextItem(String inputText) {
+        if (inputText == null || inputText.isEmpty()) {
+            return null;
+        }
+
         List<TextItem> allItems = getAllItems();
         TextItem closestItem = null;
         int minDistance = Integer.MAX_VALUE;
 
         for (TextItem item : allItems) {
-            int distance = levenshteinDistance(inputText, item.getText());
+            String text = item.getText();
+            if (text == null || text.isEmpty()) {
+                continue; // 跳过无效文本
+            }
+
+            // 提前过滤掉长度差异过大的文本项
+            if (Math.abs(inputText.length() - text.length()) > minDistance) {
+                continue;
+            }
+
+            int distance = levenshteinDistance(inputText, text);
             if (distance < minDistance) {
                 minDistance = distance;
                 closestItem = item;
