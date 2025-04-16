@@ -3,7 +3,6 @@ package com.example.textdemo.ui.view;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -17,13 +16,12 @@ import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 
 import com.example.textdemo.R;
-import com.example.textdemo.data.dao.TextItemDao;
 import com.example.textdemo.data.model.TextItem;
 import com.example.textdemo.service.FloatingWindowService;
 import com.example.textdemo.config.Constants;
+import com.example.textdemo.ui.viewmodel.ScreenSelectionViewModel;
 import com.example.textdemo.utils.common.GlobalStateManager;
 import com.example.textdemo.utils.common.OffsetUtils;
-import com.example.textdemo.data.database.RectanglesDatabaseHelper;
 
 import java.util.Objects;
 
@@ -36,8 +34,6 @@ public class ScreenSelectionView extends View {
     private Context context;
     // 画笔
     private Paint paint;
-    // 数据库操作
-    RectanglesDatabaseHelper dbHelper;
     // 选择区域
     private Rect selectionRect;
     // 是否正在调整
@@ -60,24 +56,27 @@ public class ScreenSelectionView extends View {
     private Rect ocrResultRect;
     // OCR结果文本
     private String ocrResultText;
-    // 文本项数据访问对象
-    private TextItemDao textItemDao;
+    // 视图模型
+    private final ScreenSelectionViewModel viewModel;
 
     public ScreenSelectionView(Context context) {
         super(context);
         this.context = context;
+        this.viewModel = new ScreenSelectionViewModel(context);
         init();
     }
 
     public ScreenSelectionView(Context context, AttributeSet attrs) {
         super(context, attrs);
         this.context = context;
+        this.viewModel = new ScreenSelectionViewModel(context);
         init();
     }
 
     public ScreenSelectionView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         this.context = context;
+        this.viewModel = new ScreenSelectionViewModel(context);
         init();
     }
 
@@ -85,8 +84,6 @@ public class ScreenSelectionView extends View {
      * 初始化画笔和选择区域
      */
     private void init() {
-        // 初始化文本项数据访问对象
-        textItemDao = new TextItemDao(context);
         // 初始化画笔
         paint = new Paint();
         // 设置画笔颜色
@@ -95,21 +92,14 @@ public class ScreenSelectionView extends View {
         paint.setStyle(Paint.Style.STROKE);
         // 设置画笔宽度
         paint.setStrokeWidth(5);
-        // 初始化数据库操作
-        dbHelper = new RectanglesDatabaseHelper(context);
-        // 获取数据库
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        // 检查表是否存在
-        if (!dbHelper.tableExists(db, RectanglesDatabaseHelper.getTABLE_RECTANGLES())) {
-            // 如果表不存在，onCreate 方法会自动创建表
-            dbHelper.onCreate(db);
-            // 初始化一条数据
-            dbHelper.insertInitialData();
-        }
+        // 插入初始矩形位置信息
+        Rect initialRect = new Rect(100, 100, 400, 400);
+        // 插入矩形到数据库
+        viewModel.insertRectangle(initialRect);
         // 从数据库中获取保存的矩形位置信息
-        Rect savedRect = dbHelper.getRectangle(1);
+        Rect savedRect = viewModel.getSavedRectangle();
         // 设置选择区域，默认为100,100,400,400
-        selectionRect = Objects.requireNonNullElseGet(savedRect, () -> new Rect(100, 100, 400, 400));
+        selectionRect = Objects.requireNonNullElseGet(savedRect, () -> initialRect);
         // 获取按钮组的位置
         int left = selectionRect.right - Constants.BUTTON_NORMAL_SIZE * 4 - Constants.BUTTON_SPACE;
         int top = selectionRect.bottom + Constants.BUTTON_SPACE;
@@ -311,12 +301,10 @@ public class ScreenSelectionView extends View {
             return;
         }
 
-        TextItem closestItem = TextItemDao.findClosestTextItem(result);
+        TextItem closestItem = viewModel.findClosestTextItem(result);
+        // 使用 ViewModel 的方法来格式化OCR结果和匹配结果
+        String resultText = viewModel.formatOcrResult(result, closestItem);
         if (closestItem != null) {
-            String text = closestItem.getText();
-            String res = closestItem.isRes() ? "对" : "错";
-            // 格式化字符串
-            String resultText = "OCR识别结果：" + result + "\nOCR匹配结果：" + text + "\nOCR匹配答案：" + res;
             // 使用 post 方法确保在主线程中更新视图
             post(() -> {
                 ocrResultText = resultText;
@@ -333,7 +321,7 @@ public class ScreenSelectionView extends View {
         } else {
             Log.e("setOcrResult", "无匹配的文本项");
             post(() -> {
-                ocrResultText = "OCR识别结果：" + result + "\nOCR匹配结果：无\nOCR匹配答案：无";
+                ocrResultText = resultText;
                 invalidate();
             });
         }
@@ -443,7 +431,7 @@ public class ScreenSelectionView extends View {
                 // 重置调整方向
                 adjustOrientation = 0;
                 // 更新数据库中保存的矩形位置信息
-                dbHelper.updateRectangle(1, selectionRect.left, selectionRect.top, selectionRect.right, selectionRect.bottom);
+                viewModel.updateRectangle(selectionRect);
                 break;
         }
         return true;

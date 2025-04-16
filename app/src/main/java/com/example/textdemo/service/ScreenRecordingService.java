@@ -31,6 +31,7 @@ import androidx.core.app.NotificationCompat;
 import com.example.textdemo.R;
 import com.example.textdemo.config.Constants;
 import com.example.textdemo.data.database.RectanglesDatabaseHelper;
+import com.example.textdemo.ui.viewmodel.ScreenSelectionViewModel;
 import com.example.textdemo.utils.io.FileOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
@@ -152,8 +153,9 @@ public class ScreenRecordingService extends Service {
 
         // 初始化数据库操作
         dbHelper = new RectanglesDatabaseHelper(this);
+        ScreenSelectionViewModel viewModel = new ScreenSelectionViewModel(this);
         // 从数据库中获取保存的矩形位置信息，如果没有找到，则使用默认的矩形位置信息
-        savedRect = Objects.requireNonNullElseGet(dbHelper.getRectangle(1), () -> new Rect(100, 100, 400, 400));
+        savedRect = Objects.requireNonNullElseGet(viewModel.getSavedRectangle(), () -> new Rect(100, 100, 400, 400));
 
         // 初始化图像处理线程
         imageHandlerThread = new HandlerThread("ImageHandlerThread");
