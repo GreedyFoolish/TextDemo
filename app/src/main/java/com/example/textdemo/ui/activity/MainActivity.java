@@ -18,9 +18,10 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.example.textdemo.R;
 import com.example.textdemo.biz.ScreenRecordingBiz;
-import com.example.textdemo.biz.SelectionRectBiz;
 import com.example.textdemo.databinding.ActivityMainBinding;
+import com.example.textdemo.utils.common.ContextProvider;
 import com.example.textdemo.service.FloatingWindowService;
+import com.example.textdemo.service.ServiceManager;
 import com.example.textdemo.ui.view.ScreenSelectionView;
 import com.example.textdemo.utils.common.CheckPermission;
 import com.example.textdemo.config.Constants;
@@ -30,6 +31,11 @@ import com.example.textdemo.utils.io.ScreenRecordingHelper;
 
 import java.util.Arrays;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class MainActivity extends AppCompatActivity {
     // 配置应用栏
     private AppBarConfiguration appBarConfiguration;
@@ -51,6 +57,12 @@ public class MainActivity extends AppCompatActivity {
 
     // 屏幕选择视图
     private ScreenSelectionView screenSelectionView;
+
+    @Inject
+    ContextProvider contextProvider;
+
+    @Inject
+    ServiceManager serviceManager;
 
     /**
      * 创建活动时调用的方法
@@ -159,7 +171,7 @@ public class MainActivity extends AppCompatActivity {
         binding.btnStopRecording.setOnClickListener(v -> stopScreenRecordingInternal());
 
         // 选择范围按钮点击事件
-        binding.selectionRect.setOnClickListener(v -> SelectionRectBiz.addView(this, binding));
+        binding.selectionRect.setOnClickListener(v -> serviceManager.startFloatingWindowService());
     }
 
     /**
@@ -180,14 +192,14 @@ public class MainActivity extends AppCompatActivity {
      * 启动屏幕录制的内部方法
      */
     private void startScreenRecordingInternal() {
-        ScreenRecordingBiz.startScreenRecording(this, screenRecordLauncher);
+        serviceManager.startScreenRecording(screenRecordLauncher);
     }
 
     /**
      * 停止屏幕录制的内部方法
      */
     private void stopScreenRecordingInternal() {
-        ScreenRecordingBiz.stopScreenRecording(this);
+        serviceManager.stopScreenRecording();
     }
 
     /**

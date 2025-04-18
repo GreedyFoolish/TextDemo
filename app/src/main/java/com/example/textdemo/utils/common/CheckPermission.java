@@ -19,8 +19,8 @@ public class CheckPermission {
                 == PackageManager.PERMISSION_GRANTED;
     }
 
-    public static void requestReadExternalStoragePermission(Activity activity, int requestCode) {
-        ActivityCompat.requestPermissions(activity,
+    public static void requestReadExternalStoragePermission(Context context, int requestCode) {
+        ActivityCompat.requestPermissions((Activity) context,
                 new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                 requestCode);
     }
@@ -30,21 +30,21 @@ public class CheckPermission {
                 == PackageManager.PERMISSION_GRANTED;
     }
 
-    public static void requestWriteExternalStoragePermission(Activity activity, int requestCode) {
-        ActivityCompat.requestPermissions(activity,
+    public static void requestWriteExternalStoragePermission(Context context, int requestCode) {
+        ActivityCompat.requestPermissions((Activity) context,
                 new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                 requestCode);
     }
 
-    public static boolean isRecordingPermissionGranted(Activity activity) {
-        return ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO)
+    public static boolean isRecordingPermissionGranted(Context context) {
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
                 == PackageManager.PERMISSION_GRANTED
-                && ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
+                && ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED;
     }
 
-    public static void requestRecordingPermission(Activity activity, int requestRecordingPermissions) {
-        ActivityCompat.requestPermissions(activity,
+    public static void requestRecordingPermission(Context context, int requestRecordingPermissions) {
+        ActivityCompat.requestPermissions((Activity) context,
                 new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA},
                 requestRecordingPermissions);
     }
@@ -53,10 +53,10 @@ public class CheckPermission {
         return Settings.canDrawOverlays(context);
     }
 
-    public static void requestSystemAlertWindowPermission(Activity activity, int requestCode) {
+    public static void requestSystemAlertWindowPermission(Context context, int requestCode) {
         Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:" + activity.getPackageName()));
-        activity.startActivityForResult(intent, requestCode);
-        Toast.makeText(activity, "请在设置中开启悬浮窗权限", Toast.LENGTH_SHORT).show();
+                Uri.parse("package:" + context.getPackageName()));
+        ((Activity) context).startActivityForResult(intent, requestCode);
+        Toast.makeText(context, "请在设置中开启悬浮窗权限", Toast.LENGTH_SHORT).show();
     }
 }

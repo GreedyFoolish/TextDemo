@@ -6,11 +6,13 @@ espressoCore = "3.6.1"
 appcompat = "1.7.0"
 material = "1.12.0"
 constraintlayout = "2.2.1"
-navigationFragment = "2.8.8"
-navigationUi = "2.8.8"
-gson = "2.8.9"
+navigationFragment = "2.8.9"
+navigationUi = "2.8.9"
+gson = "2.10.1"
 firebaseCrashlyticsBuildtools = "3.0.3"
 tessTwo = "9.1.0"
+hilt = "2.51.1"
+kotlin = "2.0.21"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -24,7 +26,11 @@ navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
 tess-two = { group = "com.rmtheis", name = "tess-two", version.ref = "tessTwo" }
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }  # 添加 Hilt Android 库
+hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }  # 添加 Hilt 编译器
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-
+hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
