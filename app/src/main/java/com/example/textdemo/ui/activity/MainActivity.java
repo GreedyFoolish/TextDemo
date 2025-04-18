@@ -1,9 +1,7 @@
 package com.example.textdemo.ui.activity;
 
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
@@ -17,7 +15,6 @@ import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
 import com.example.textdemo.R;
-import com.example.textdemo.biz.ScreenRecordingBiz;
 import com.example.textdemo.databinding.ActivityMainBinding;
 import com.example.textdemo.utils.common.ContextProvider;
 import com.example.textdemo.service.FloatingWindowService;
@@ -25,11 +22,10 @@ import com.example.textdemo.service.ServiceManager;
 import com.example.textdemo.ui.view.ScreenSelectionView;
 import com.example.textdemo.utils.common.CheckPermission;
 import com.example.textdemo.config.Constants;
+import com.example.textdemo.utils.common.PermissionManager;
 import com.example.textdemo.utils.io.FilePickerHelper;
 import com.example.textdemo.utils.common.GlobalStateManager;
 import com.example.textdemo.utils.io.ScreenRecordingHelper;
-
-import java.util.Arrays;
 
 import javax.inject.Inject;
 
@@ -57,12 +53,19 @@ public class MainActivity extends AppCompatActivity {
 
     // 屏幕选择视图
     private ScreenSelectionView screenSelectionView;
-
+    // 上下文提供者
     @Inject
     ContextProvider contextProvider;
-
+    // 权限管理
+    @Inject
+    PermissionManager permissionManager;
+    // 检查权限
+    @Inject
+    CheckPermission checkPermission;
+    // 服务管理
     @Inject
     ServiceManager serviceManager;
+
 
     /**
      * 创建活动时调用的方法
@@ -72,39 +75,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // 检查是否已经授予读取外部存储的权限
-        if (!CheckPermission.isReadExternalStorageGranted(this)) {
-            // 如果未授予，请求读取外部存储的权限
-            CheckPermission.requestReadExternalStoragePermission(this, Constants.REQUEST_CODE_READ_EXTERNAL_STORAGE);
-            Log.e("CheckPermission", "请求读取外部存储的权限");
-        } else {
-            Log.e("CheckPermission", "已授予读取外部存储的权限");
-        }
-        // 检查是否已经授予写入外部存储的权限
-        if (!CheckPermission.isWriteExternalStorageGranted(this)) {
-            // 如果未授予，请求写入外部存储的权限
-            CheckPermission.requestWriteExternalStoragePermission(this, Constants.REQUEST_CODE_WRITE_EXTERNAL_STORAGE);
-            Log.e("CheckPermission", "请求写入外部存储的权限");
-        } else {
-            Log.e("CheckPermission", "已授予写入外部存储的权限");
-        }
-        // 检查是否已经授予录制权限
-        if (!CheckPermission.isRecordingPermissionGranted(this)) {
-            // 如果未授予，请求录制权限
-            CheckPermission.requestRecordingPermission(this, Constants.REQUEST_RECORDING_PERMISSIONS);
-            Log.e("CheckPermission", "请求录制权限");
-        } else {
-            Log.e("CheckPermission", "已授予录制权限");
-        }
-        // 检查是否已经授予SYSTEM_ALERT_WINDOW权限
-        if (!CheckPermission.isSystemAlertWindowPermissionGranted(this)) {
-            // 如果未授予，请求SYSTEM_ALERT_WINDOW权限
-            CheckPermission.requestSystemAlertWindowPermission(this, Constants.REQUEST_CODE_SYSTEM_ALERT_WINDOW);
-            Log.e("CheckPermission", "请求SYSTEM_ALERT_WINDOW权限");
-        } else {
-            Log.e("CheckPermission", "已授予SYSTEM_ALERT_WINDOW权限");
-        }
+        // 使用 PermissionManager 检查和请求权限
+        permissionManager.checkAndRequestPermissions(this);
 
         // 检查相机支持的格式
         // CheckSupportedFormats.CheckCameraSupportedFormats(this);
@@ -178,10 +150,12 @@ public class MainActivity extends AppCompatActivity {
      * 请求屏幕捕获权限
      */
     private void requestScreenCapturePermission() {
-        if (!CheckPermission.isRecordingPermissionGranted(this)) {
-            CheckPermission.requestRecordingPermission(this, Constants.REQUEST_RECORDING_PERMISSIONS);
+        if (!checkPermission.isRecordingPermissionGranted()) {
+            checkPermission.requestRecordingPermission(this, Constants.REQUEST_RECORDING_PERMISSIONS);
             // 设置权限授予监听器
-            GlobalStateManager.setPermissionGrantedListener(permissionGrantedListener);
+            if (GlobalStateManager.getPermissionGrantedListener() == null) {
+                GlobalStateManager.setPermissionGrantedListener(permissionGrantedListener);
+            }
         } else {
             // 如果权限已经授予，执行权限授予监听器的onPermissionGranted方法
             permissionGrantedListener.onPermissionGranted();
@@ -192,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
      * 启动屏幕录制的内部方法
      */
     private void startScreenRecordingInternal() {
-        serviceManager.startScreenRecording(screenRecordLauncher);
+        serviceManager.startScreenRecording(this, screenRecordLauncher);
     }
 
     /**
@@ -212,50 +186,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        // 处理读取文件权限请求结果
-        if (requestCode == Constants.REQUEST_CODE_READ_EXTERNAL_STORAGE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // 权限已授予
-                Toast.makeText(this, "已获取读取文件权限", Toast.LENGTH_SHORT).show();
-            } else {
-                // 权限被拒绝
-                Toast.makeText(this, "未获取读取文件权限", Toast.LENGTH_SHORT).show();
-            }
-        }
-        // 处理写入文件权限请求结果
-        if (requestCode == Constants.REQUEST_CODE_WRITE_EXTERNAL_STORAGE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.e("onRequestPermissionsResult", "写入文件权限请求结果" + grantResults[0]);
-                // 权限已授予
-                Toast.makeText(this, "已获取写入文件权限", Toast.LENGTH_SHORT).show();
-            } else {
-                Log.e("onRequestPermissionsResult", Arrays.toString(grantResults));
-                // 权限被拒绝
-                Toast.makeText(this, "未获取写入文件权限", Toast.LENGTH_SHORT).show();
-            }
-        }
-        // 处理录制权限请求结果
-        if (requestCode == Constants.REQUEST_RECORDING_PERMISSIONS) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // 权限已授予
-                // Toast.makeText(this, "已获取录制权限", Toast.LENGTH_SHORT).show();
-                // 通知全局状态管理器权限已授予
-                GlobalStateManager.notifyPermissionGranted();
-            } else {
-                // 权限被拒绝
-                Toast.makeText(this, "未获取录制权限", Toast.LENGTH_SHORT).show();
-            }
-        }
-        // 处理SYSTEM_ALERT_WINDOW权限请求结果
-        if (requestCode == Constants.REQUEST_CODE_SYSTEM_ALERT_WINDOW) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // 权限已授予
-                Toast.makeText(this, "已获取SYSTEM_ALERT_WINDOW权限", Toast.LENGTH_SHORT).show();
-            } else {
-                // 权限被拒绝
-                Toast.makeText(this, "未获取SYSTEM_ALERT_WINDOW权限", Toast.LENGTH_SHORT).show();
-            }
-        }
+        permissionManager.handlePermissionResult(requestCode, permissions, grantResults);
     }
 
     /**

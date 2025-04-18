@@ -3,6 +3,7 @@ package com.example.textdemo.di;
 import android.content.Context;
 import android.media.projection.MediaProjectionManager;
 
+import com.example.textdemo.utils.common.CheckPermission;
 import com.example.textdemo.utils.common.ContextProvider;
 
 import dagger.Module;
@@ -34,5 +35,16 @@ public class AppModule {
     @Provides
     public MediaProjectionManager provideMediaProjectionManager(@ApplicationContext Context context) {
         return (MediaProjectionManager) context.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+    }
+
+    /**
+     * 提供CheckPermission
+     *
+     * @param context 上下文
+     * @return CheckPermission
+     */
+    @Provides
+    public CheckPermission provideCheckPermission(@ApplicationContext Context context) {
+        return new CheckPermission(context);
     }
 }

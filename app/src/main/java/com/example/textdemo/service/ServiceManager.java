@@ -1,5 +1,6 @@
 package com.example.textdemo.service;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.media.projection.MediaProjectionManager;
@@ -24,6 +25,8 @@ public class ServiceManager {
     // 注入ContextProvider
     private final Context context;
 
+    @Inject
+    CheckPermission checkPermission;
 
     /**
      * 构造函数，使用依赖注入注入ContextProvider和MediaProjectionManager
@@ -61,10 +64,11 @@ public class ServiceManager {
     /**
      * 启动屏幕录制服务
      *
+     * @param activity 当前的 Activity 实例
      * @param screenRecordLauncher 屏幕录制活动结果处理程序
      */
-    public void startScreenRecording(ActivityResultLauncher<Intent> screenRecordLauncher) {
-        if (CheckPermission.isRecordingPermissionGranted(context)) {
+    public void startScreenRecording(Activity activity, ActivityResultLauncher<Intent> screenRecordLauncher) {
+        if (checkPermission.isRecordingPermissionGranted()) {
             MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) context.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
             if (mediaProjectionManager == null) {
                 Log.e(TAG, "无法获取 MediaProjectionManager 实例");
@@ -73,8 +77,8 @@ public class ServiceManager {
             Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
             screenRecordLauncher.launch(captureIntent);
         } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                CheckPermission.requestRecordingPermission(context, Constants.REQUEST_RECORDING_PERMISSIONS);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                checkPermission.requestRecordingPermission(activity, Constants.REQUEST_RECORDING_PERMISSIONS);
             } else {
                 // 兼容低版本设备
                 Toast.makeText(context, "该版本不支持此项功能", Toast.LENGTH_SHORT).show();
@@ -86,7 +90,7 @@ public class ServiceManager {
      * 停止屏幕录制服务
      */
     public void stopScreenRecording() {
-        // 创建一个停止录屏服务e的Intent
+        // 创建一个停止录屏服务的Intent
         Intent serviceIntent = new Intent(context, ScreenRecordingService.class);
         try {
             if (serviceIntent.getComponent() == null) {

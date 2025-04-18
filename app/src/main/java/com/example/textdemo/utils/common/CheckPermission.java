@@ -1,62 +1,98 @@
 package com.example.textdemo.utils.common;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.provider.Settings;
 import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import javax.inject.Inject;
+
 public class CheckPermission {
 
-    public static boolean isReadExternalStorageGranted(Context context) {
+    private final Context context;
+
+    @Inject
+    public CheckPermission(@NonNull Context context) {
+        this.context = context.getApplicationContext();
+    }
+
+    public boolean isReadExternalStorageGranted() {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE)
                 == PackageManager.PERMISSION_GRANTED;
     }
 
-    public static void requestReadExternalStoragePermission(Context context, int requestCode) {
-        ActivityCompat.requestPermissions((Activity) context,
-                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                requestCode);
+    public void requestReadExternalStoragePermission(Activity activity, int requestCode) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) { // 检查是否需要动态权限
+            ActivityCompat.requestPermissions(activity,
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                    requestCode);
+        }
     }
 
-    public static boolean isWriteExternalStorageGranted(Context context) {
+    public boolean isWriteExternalStorageGranted() {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 == PackageManager.PERMISSION_GRANTED;
     }
 
-    public static void requestWriteExternalStoragePermission(Context context, int requestCode) {
-        ActivityCompat.requestPermissions((Activity) context,
-                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                requestCode);
+    public void requestWriteExternalStoragePermission(Activity activity, int requestCode) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) { // 检查是否需要动态权限
+            ActivityCompat.requestPermissions(activity,
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    requestCode);
+        }
     }
 
-    public static boolean isRecordingPermissionGranted(Context context) {
+    public boolean isRecordingPermissionGranted() {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
                 == PackageManager.PERMISSION_GRANTED
                 && ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED;
     }
 
-    public static void requestRecordingPermission(Context context, int requestRecordingPermissions) {
-        ActivityCompat.requestPermissions((Activity) context,
-                new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA},
-                requestRecordingPermissions);
+    public void requestRecordingPermission(Activity activity, int requestCode) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) { // 检查是否需要动态权限
+            ActivityCompat.requestPermissions(activity,
+                    new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA},
+                    requestCode);
+        }
     }
 
-    public static boolean isSystemAlertWindowPermissionGranted(Context context) {
+    public boolean isSystemAlertWindowPermissionGranted() {
         return Settings.canDrawOverlays(context);
     }
 
-    public static void requestSystemAlertWindowPermission(Context context, int requestCode) {
-        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:" + context.getPackageName()));
-        ((Activity) context).startActivityForResult(intent, requestCode);
-        Toast.makeText(context, "请在设置中开启悬浮窗权限", Toast.LENGTH_SHORT).show();
+    @SuppressLint("QueryPermissionsNeeded")
+    public void requestSystemAlertWindowPermission(final Activity activity, int requestCode) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + context.getPackageName()));
+            if (intent.resolveActivity(context.getPackageManager()) != null) { // 检查是否有目标 Activity
+                activity.startActivityForResult(intent, requestCode);
+                runOnUiThread(() -> Toast.makeText(context, "请在设置中开启悬浮窗权限", Toast.LENGTH_SHORT).show());
+            } else {
+                runOnUiThread(() -> Toast.makeText(context, "无法打开悬浮窗权限设置", Toast.LENGTH_SHORT).show());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            runOnUiThread(() -> Toast.makeText(context, "请求悬浮窗权限失败：" + e.getMessage(), Toast.LENGTH_SHORT).show());
+        }
+    }
+
+    private void runOnUiThread(Runnable action) {
+        if (context instanceof Activity) {
+            ((Activity) context).runOnUiThread(action);
+        } else {
+            throw new IllegalStateException("上下文必须是Activity的实例才能在UI线程上显示Toast");
+        }
     }
 }
