@@ -11,7 +11,6 @@ import android.os.Build;
 import android.provider.Settings;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -22,8 +21,8 @@ public class CheckPermission {
     private final Context context;
 
     @Inject
-    public CheckPermission(@NonNull Context context) {
-        this.context = context.getApplicationContext();
+    public CheckPermission(ContextProvider contextProvider) {
+        this.context = contextProvider.getContext();
     }
 
     public boolean isReadExternalStorageGranted() {

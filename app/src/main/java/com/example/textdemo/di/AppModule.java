@@ -45,6 +45,6 @@ public class AppModule {
      */
     @Provides
     public CheckPermission provideCheckPermission(@ApplicationContext Context context) {
-        return new CheckPermission(context);
+        return new CheckPermission(new ContextProviderImpl(context));
     }
 }

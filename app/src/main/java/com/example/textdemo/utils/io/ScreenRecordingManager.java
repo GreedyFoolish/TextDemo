@@ -84,5 +84,4 @@ public class ScreenRecordingManager {
     public ActivityResultLauncher<Intent> getScreenRecordLauncher() {
         return screenRecordLauncher;
     }
-
 }
