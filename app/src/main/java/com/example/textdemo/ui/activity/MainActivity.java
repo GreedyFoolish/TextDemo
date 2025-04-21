@@ -25,7 +25,7 @@ import com.example.textdemo.config.Constants;
 import com.example.textdemo.utils.common.PermissionManager;
 import com.example.textdemo.utils.io.FilePickerHelper;
 import com.example.textdemo.utils.common.GlobalStateManager;
-import com.example.textdemo.utils.io.ScreenRecordingHelper;
+import com.example.textdemo.utils.io.ScreenRecordingManager;
 
 import javax.inject.Inject;
 
@@ -88,11 +88,8 @@ public class MainActivity extends AppCompatActivity {
         // 初始化文件选择器辅助工具
         filePickerHelper = new FilePickerHelper(this);
 
-        // 初始化屏幕录制辅助工具
-        ScreenRecordingHelper screenRecordingHelper = new ScreenRecordingHelper(this);
-
         // 初始化屏幕录制活动结果处理程序
-        screenRecordLauncher = screenRecordingHelper.getScreenRecordingManager().getScreenRecordLauncher();
+        screenRecordLauncher = new ScreenRecordingManager(this).getScreenRecordLauncher();
 
         // 初始化全局状态管理器中的权限授予监听器
         permissionGrantedListener = new GlobalStateManager.OnPermissionGrantedListener() {
