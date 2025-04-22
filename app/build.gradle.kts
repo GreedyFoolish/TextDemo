@@ -49,6 +49,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.tess.two)
+    implementation(libs.firebase.database)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

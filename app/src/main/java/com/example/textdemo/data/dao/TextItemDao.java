@@ -1,12 +1,14 @@
 package com.example.textdemo.data.dao;
 
+import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
-import com.example.textdemo.data.model.TextItem;
 import com.example.textdemo.data.database.TextItemDatabaseHelper;
+import com.example.textdemo.data.model.TextItem;
+import com.google.firebase.database.DatabaseException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +21,7 @@ public class TextItemDao {
     private final String COLUMN_RES;
 
     public TextItemDao(Context context) {
-        dbHelper = new TextItemDatabaseHelper(context);
+        dbHelper = (TextItemDatabaseHelper) TextItemDatabaseHelper.getInstance(context, TextItemDatabaseHelper.class);
         TABLE_NAME = dbHelper.getTABLE_NAME();
         COLUMN_ID = dbHelper.getCOLUMN_ID();
         COLUMN_TEXT = dbHelper.getCOLUMN_TEXT();
@@ -32,15 +34,22 @@ public class TextItemDao {
      * @param textItem 文本项
      * @return 插入成功返回新行的ID，失败返回-1
      */
+    @SuppressLint("RestrictedApi")
     public long insertItem(TextItem textItem) {
-        try (SQLiteDatabase db = dbHelper.getWritableDatabase()) {
-            ContentValues values = new ContentValues();
-            values.put(COLUMN_TEXT, textItem.getText());
-            values.put(COLUMN_RES, textItem.isRes() ? 1 : 0);
-            return db.insert(TABLE_NAME, null, values);
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_TEXT, textItem.getText());
+        values.put(COLUMN_RES, textItem.isRes() ? 1 : 0);
+
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        db.beginTransaction();
+        try {
+            long id = db.insert(TABLE_NAME, null, values);
+            db.setTransactionSuccessful();
+            return id;
         } catch (Exception e) {
-            e.printStackTrace();
-            return -1;
+            throw new DatabaseException("新增文本项时出错", e);
+        } finally {
+            db.endTransaction();
         }
     }
 

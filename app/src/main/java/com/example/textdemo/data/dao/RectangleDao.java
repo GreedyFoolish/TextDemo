@@ -24,7 +24,7 @@ public class RectangleDao {
      * @param context 上下文对象
      */
     public RectangleDao(Context context) {
-        dbHelper = new RectanglesDatabaseHelper(context);
+        dbHelper = (RectanglesDatabaseHelper) RectanglesDatabaseHelper.getInstance(context, RectanglesDatabaseHelper.class);
         TABLE_NAME = dbHelper.getTABLE_NAME();
         COLUMN_ID = dbHelper.getCOLUMN_ID();
         COLUMN_LEFT = dbHelper.getCOLUMN_LEFT();
@@ -40,36 +40,32 @@ public class RectangleDao {
      * @return 插入或更新记录的行 ID，如果操作失败则返回 -1
      */
     public long insertRectangle(Rect rectangle) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(COLUMN_LEFT, rectangle.left);
         values.put(COLUMN_TOP, rectangle.top);
         values.put(COLUMN_RIGHT, rectangle.right);
         values.put(COLUMN_BOTTOM, rectangle.bottom);
 
-        // 检查表中是否已经存在数据
-        Cursor cursor = db.query(
-                TABLE_NAME,
-                new String[]{COLUMN_ID},
-                null,
-                null,
-                null,
-                null,
-                null,
-                "1"
-        );
-
-        if (cursor.moveToFirst()) {
-            // 如果存在数据，则不操作
-            cursor.close();
-            db.close();
-            return -1;
-        } else {
-            // 如果不存在数据，则插入
-            long id = db.insert(TABLE_NAME, null, values);
-            cursor.close();
-            db.close();
-            return id;
+        try (SQLiteDatabase db = dbHelper.getWritableDatabase()) {
+            // 检查表中是否已经存在数据
+            try (Cursor cursor = db.query(
+                    TABLE_NAME,
+                    new String[]{COLUMN_ID},
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "1"
+            )) {
+                if (cursor.moveToFirst()) {
+                    // 如果存在数据，则不操作
+                    return -1;
+                } else {
+                    // 如果不存在数据，则插入
+                    return db.insert(TABLE_NAME, null, values);
+                }
+            }
         }
     }
 
@@ -79,39 +75,27 @@ public class RectangleDao {
      * @return 匹配的矩形对象，如果没有找到则返回 null
      */
     public Rectangle getRectangle() {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        String[] projection = {
-                COLUMN_ID,
-                COLUMN_LEFT,
-                COLUMN_TOP,
-                COLUMN_RIGHT,
-                COLUMN_BOTTOM
-        };
-
-        Cursor cursor = db.query(
-                TABLE_NAME,
-                projection,
-                null,
-                null,
-                null,
-                null,
-                null
-        );
-
-        Rectangle rectangle = null;
-        if (cursor.moveToFirst()) {
-            rectangle = new Rectangle(
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID)),
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_LEFT)),
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_TOP)),
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_RIGHT)),
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_BOTTOM))
-            );
+        try (SQLiteDatabase db = dbHelper.getReadableDatabase();
+             Cursor cursor = db.query(
+                     TABLE_NAME,
+                     new String[]{COLUMN_ID, COLUMN_LEFT, COLUMN_TOP, COLUMN_RIGHT, COLUMN_BOTTOM},
+                     null,
+                     null,
+                     null,
+                     null,
+                     null
+             )) {
+            if (cursor.moveToFirst()) {
+                return new Rectangle(
+                        cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_LEFT)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_TOP)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_RIGHT)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_BOTTOM))
+                );
+            }
         }
-
-        cursor.close();
-        db.close();
-        return rectangle;
+        return null;
     }
 
     /**
@@ -120,15 +104,15 @@ public class RectangleDao {
      * @param rectangle 包含更新信息的矩形对象
      */
     public void updateRectangle(Rect rectangle) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(COLUMN_LEFT, rectangle.left);
         values.put(COLUMN_TOP, rectangle.top);
         values.put(COLUMN_RIGHT, rectangle.right);
         values.put(COLUMN_BOTTOM, rectangle.bottom);
 
-        int count = db.update(TABLE_NAME, values, null, null);
-        db.close();
+        try (SQLiteDatabase db = dbHelper.getWritableDatabase()) {
+            db.update(TABLE_NAME, values, null, null);
+        }
     }
 
     /**
@@ -137,9 +121,8 @@ public class RectangleDao {
      * @return 受影响的行数，如果删除失败则返回 0
      */
     public int deleteRectangle() {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        int count = db.delete(TABLE_NAME, null, null);
-        db.close();
-        return count;
+        try (SQLiteDatabase db = dbHelper.getWritableDatabase()) {
+            return db.delete(TABLE_NAME, null, null);
+        }
     }
 }

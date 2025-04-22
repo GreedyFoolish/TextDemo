@@ -36,7 +36,7 @@ public class FilePickerManager {
     }
 
     private ActivityResultLauncher<Intent> registerOpenFileLauncher() {
-        TextItemDao textItemD = new TextItemDao(activity);
+        TextItemDao textItem = new TextItemDao(activity);
         return activity.registerForActivityResult( // 此处不再报错
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -48,19 +48,19 @@ public class FilePickerManager {
                                 String jsonString = readFile(fileUri);
                                 List<TextItem> itemList = parseJson(jsonString);
                                 if (itemList != null) {
+                                    int cnt = 0;
+                                    int errorCnt = 0;
                                     Log.e("FilePickerManager", "所有数据项: " + itemList);
                                     for (TextItem item : itemList) {
-                                        long id = textItemD.insertItem(item);
+                                        long id = textItem.insertItem(item);
                                         if (id != -1) {
-                                            Toast.makeText(activity, "数据导入成功", Toast.LENGTH_SHORT).show();
+                                            cnt++;
                                         } else {
-                                            Toast.makeText(activity, "数据导入失败", Toast.LENGTH_SHORT).show();
+                                            errorCnt++;
                                         }
                                     }
-                                    List<TextItem> allItems = textItemD.getAllItems();
-                                    for (TextItem item : allItems) {
-                                        System.out.println(item);
-                                    }
+                                    List<TextItem> allItems = (List<TextItem>) textItem.getAllItems();
+                                    Toast.makeText(activity, "数据导入结果：成功" + cnt + "条，失败" + errorCnt + "条", Toast.LENGTH_SHORT).show();
                                 } else {
                                     Toast.makeText(activity, "文件数据格式错误，请检查后再进行导入操作", Toast.LENGTH_SHORT).show();
                                 }
