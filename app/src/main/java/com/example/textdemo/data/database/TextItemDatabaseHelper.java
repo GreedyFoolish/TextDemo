@@ -3,14 +3,21 @@ package com.example.textdemo.data.database;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+import dagger.hilt.android.qualifiers.ApplicationContext;
+
+@Singleton
 public class TextItemDatabaseHelper extends AppDatabaseHelper {
     private static TextItemDatabaseHelper instance;
-    public static final String TABLE_NAME = "text_items";
-    public static final String COLUMN_ID = "id";
-    public static final String COLUMN_TEXT = "text";
-    public static final String COLUMN_RES = "res";
+    private static final String TABLE_NAME = "text_items";
+    private static final String COLUMN_ID = "id";
+    private static final String COLUMN_TEXT = "text";
+    private static final String COLUMN_RES = "res";
 
-    public TextItemDatabaseHelper(Context context) {
+    @Inject
+    public TextItemDatabaseHelper(@ApplicationContext Context context) {
         super(context);
     }
 

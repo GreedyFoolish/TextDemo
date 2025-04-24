@@ -3,6 +3,12 @@ package com.example.textdemo.data.database;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+import dagger.hilt.android.qualifiers.ApplicationContext;
+
+@Singleton
 public class RectanglesDatabaseHelper extends AppDatabaseHelper {
     private static RectanglesDatabaseHelper instance;
     private static final String TABLE_NAME = "rectangles";
@@ -12,7 +18,8 @@ public class RectanglesDatabaseHelper extends AppDatabaseHelper {
     private static final String COLUMN_RIGHT = "column_right";
     private static final String COLUMN_BOTTOM = "column_bottom";
 
-    public RectanglesDatabaseHelper(Context context) {
+    @Inject
+    public RectanglesDatabaseHelper(@ApplicationContext Context context) {
         super(context);
     }
 

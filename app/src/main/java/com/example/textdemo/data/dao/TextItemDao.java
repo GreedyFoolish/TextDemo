@@ -2,7 +2,6 @@ package com.example.textdemo.data.dao;
 
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
-import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -13,6 +12,10 @@ import com.google.firebase.database.DatabaseException;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+@Singleton
 public class TextItemDao {
     private final TextItemDatabaseHelper dbHelper;
     private final String TABLE_NAME;
@@ -20,8 +23,9 @@ public class TextItemDao {
     private final String COLUMN_TEXT;
     private final String COLUMN_RES;
 
-    public TextItemDao(Context context) {
-        dbHelper = (TextItemDatabaseHelper) TextItemDatabaseHelper.getInstance(context, TextItemDatabaseHelper.class);
+    @Inject
+    public TextItemDao(TextItemDatabaseHelper dbHelper) {
+        this.dbHelper = dbHelper;
         TABLE_NAME = dbHelper.getTABLE_NAME();
         COLUMN_ID = dbHelper.getCOLUMN_ID();
         COLUMN_TEXT = dbHelper.getCOLUMN_TEXT();

@@ -1,7 +1,6 @@
 package com.example.textdemo.data.dao;
 
 import android.content.ContentValues;
-import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Rect;
@@ -9,6 +8,10 @@ import android.graphics.Rect;
 import com.example.textdemo.data.database.RectanglesDatabaseHelper;
 import com.example.textdemo.data.model.Rectangle;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+@Singleton
 public class RectangleDao {
     private final RectanglesDatabaseHelper dbHelper;
     private final String TABLE_NAME;
@@ -21,10 +24,11 @@ public class RectangleDao {
     /**
      * 构造函数，初始化数据库帮助器。
      *
-     * @param context 上下文对象
+     * @param dbHelper 数据库帮助器
      */
-    public RectangleDao(Context context) {
-        dbHelper = (RectanglesDatabaseHelper) RectanglesDatabaseHelper.getInstance(context, RectanglesDatabaseHelper.class);
+    @Inject
+    public RectangleDao(RectanglesDatabaseHelper dbHelper) {
+        this.dbHelper = dbHelper;
         TABLE_NAME = dbHelper.getTABLE_NAME();
         COLUMN_ID = dbHelper.getCOLUMN_ID();
         COLUMN_LEFT = dbHelper.getCOLUMN_LEFT();
