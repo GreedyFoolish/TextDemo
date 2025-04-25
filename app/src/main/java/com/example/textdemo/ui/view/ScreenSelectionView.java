@@ -25,13 +25,11 @@ import com.example.textdemo.utils.common.OffsetUtils;
 
 import java.util.Objects;
 
-/**
- * 屏幕选择视图，用于用户选择屏幕区域进行捕获
- */
+@SuppressLint("ViewConstructor")
 public class ScreenSelectionView extends View {
 
     // 上下文
-    private Context context;
+    private final Context context;
     // 画笔
     private Paint paint;
     // 选择区域
@@ -59,24 +57,24 @@ public class ScreenSelectionView extends View {
     // 视图模型
     private final ScreenSelectionViewModel viewModel;
 
-    public ScreenSelectionView(Context context) {
+    public ScreenSelectionView(Context context, ScreenSelectionViewModel viewModel) {
         super(context);
         this.context = context;
-        this.viewModel = new ScreenSelectionViewModel(context);
+        this.viewModel = viewModel;
         init();
     }
 
-    public ScreenSelectionView(Context context, AttributeSet attrs) {
+    public ScreenSelectionView(Context context, AttributeSet attrs, ScreenSelectionViewModel viewModel) {
         super(context, attrs);
         this.context = context;
-        this.viewModel = new ScreenSelectionViewModel(context);
+        this.viewModel = viewModel;
         init();
     }
 
-    public ScreenSelectionView(Context context, AttributeSet attrs, int defStyleAttr) {
+    public ScreenSelectionView(Context context, AttributeSet attrs, int defStyleAttr, ScreenSelectionViewModel viewModel) {
         super(context, attrs, defStyleAttr);
         this.context = context;
-        this.viewModel = new ScreenSelectionViewModel(context);
+        this.viewModel = viewModel;
         init();
     }
 

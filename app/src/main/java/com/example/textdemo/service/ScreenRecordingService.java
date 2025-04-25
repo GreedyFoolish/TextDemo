@@ -30,6 +30,8 @@ import androidx.core.app.NotificationCompat;
 
 import com.example.textdemo.R;
 import com.example.textdemo.config.Constants;
+import com.example.textdemo.data.dao.RectangleDao;
+import com.example.textdemo.data.dao.TextItemDao;
 import com.example.textdemo.data.database.RectanglesDatabaseHelper;
 import com.example.textdemo.ui.viewmodel.ScreenSelectionViewModel;
 import com.example.textdemo.utils.io.FileOperation;
@@ -37,6 +39,11 @@ import com.googlecode.tesseract.android.TessBaseAPI;
 
 import java.util.Objects;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class ScreenRecordingService extends Service {
     // 通知渠道的 ID
     private static final String CHANNEL_ID = "MediaProjectionServiceChannel";
@@ -62,14 +69,20 @@ public class ScreenRecordingService extends Service {
     private Bitmap bitmap;
     // 裁剪后的 Bitmap 对象
     private Bitmap croppedBitmap;
-    // 数据库操作
-    private RectanglesDatabaseHelper dbHelper;
     // 保存的矩形位置信息
     private Rect savedRect;
     // 状态栏高度
     private int statusBarHeight = 0;
     // 图像处理器
     private ImageProcessor imageProcessor;
+    // 屏幕选择视图模型
+    private ScreenSelectionViewModel viewModel;
+
+    @Inject
+    TextItemDao textItemDao;
+
+    @Inject
+    RectangleDao rectangleDao;
 
     @SuppressLint("WrongConstant")
     @Override
@@ -151,9 +164,9 @@ public class ScreenRecordingService extends Service {
             }
         });
 
-        // 初始化数据库操作
-        dbHelper = new RectanglesDatabaseHelper(this);
-        ScreenSelectionViewModel viewModel = new ScreenSelectionViewModel(this);
+        // 手动创建ViewModel实例
+        viewModel = new ScreenSelectionViewModel(textItemDao, rectangleDao);
+
         // 从数据库中获取保存的矩形位置信息，如果没有找到，则使用默认的矩形位置信息
         savedRect = Objects.requireNonNullElseGet(viewModel.getSavedRectangle(), () -> new Rect(100, 100, 400, 400));
 
@@ -199,7 +212,6 @@ public class ScreenRecordingService extends Service {
                 }
             }
         }, imageHandler);
-
 
         return START_NOT_STICKY;
     }

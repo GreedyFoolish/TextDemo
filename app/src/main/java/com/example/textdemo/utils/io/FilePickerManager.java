@@ -10,7 +10,7 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity; // 修改此处
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.textdemo.data.model.TextItem;
 import com.example.textdemo.data.dao.TextItemDao;
@@ -25,10 +25,18 @@ import java.util.List;
 import com.google.gson.Gson;
 import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.reflect.TypeToken;
 
-public class FilePickerManager {
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
+public class FilePickerManager extends AppCompatActivity { // 修改：继承 AppCompatActivity
 
     private final AppCompatActivity activity;
     private final ActivityResultLauncher<Intent> openFileLauncher;
+
+    @Inject
+    TextItemDao textItemDao;
 
     public FilePickerManager(AppCompatActivity activity) { // 修改此处
         this.activity = activity;
@@ -36,7 +44,6 @@ public class FilePickerManager {
     }
 
     private ActivityResultLauncher<Intent> registerOpenFileLauncher() {
-        TextItemDao textItem = new TextItemDao(activity);
         return activity.registerForActivityResult( // 此处不再报错
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -52,14 +59,14 @@ public class FilePickerManager {
                                     int errorCnt = 0;
                                     Log.e("FilePickerManager", "所有数据项: " + itemList);
                                     for (TextItem item : itemList) {
-                                        long id = textItem.insertItem(item);
+                                        long id = textItemDao.insertItem(item);
                                         if (id != -1) {
                                             cnt++;
                                         } else {
                                             errorCnt++;
                                         }
                                     }
-                                    List<TextItem> allItems = (List<TextItem>) textItem.getAllItems();
+                                    List<TextItem> allItems = (List<TextItem>) textItemDao.getAllItems();
                                     Toast.makeText(activity, "数据导入结果：成功" + cnt + "条，失败" + errorCnt + "条", Toast.LENGTH_SHORT).show();
                                 } else {
                                     Toast.makeText(activity, "文件数据格式错误，请检查后再进行导入操作", Toast.LENGTH_SHORT).show();

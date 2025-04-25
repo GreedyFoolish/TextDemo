@@ -1,25 +1,25 @@
 package com.example.textdemo.ui.viewmodel;
 
-import android.content.Context;
 import android.graphics.Rect;
+
+import androidx.lifecycle.ViewModel;
 
 import com.example.textdemo.data.dao.RectangleDao;
 import com.example.textdemo.data.dao.TextItemDao;
 import com.example.textdemo.data.model.TextItem;
 
-public class ScreenSelectionViewModel {
-    private TextItemDao textItemDao;
-    private RectangleDao rectangleDao;
+public class ScreenSelectionViewModel extends ViewModel {
+    private final TextItemDao textItemDao;
+    private final RectangleDao rectangleDao;
 
-    public ScreenSelectionViewModel(Context context) {
-        this.textItemDao = new TextItemDao(context);
-        this.rectangleDao = new RectangleDao(context);
+    public ScreenSelectionViewModel(TextItemDao textItemDao, RectangleDao rectangleDao) {
+        this.textItemDao = textItemDao;
+        this.rectangleDao = rectangleDao;
     }
 
     public TextItem findClosestTextItem(String result) {
         return textItemDao.findClosestTextItem(result);
     }
-
 
     public void insertRectangle(Rect rectangle) {
         rectangleDao.insertRectangle(rectangle);
