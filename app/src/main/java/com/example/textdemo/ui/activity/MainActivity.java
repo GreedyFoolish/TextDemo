@@ -15,6 +15,7 @@ import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
 import com.example.textdemo.R;
+import com.example.textdemo.data.dao.TextItemDao;
 import com.example.textdemo.databinding.ActivityMainBinding;
 import com.example.textdemo.utils.common.ContextProvider;
 import com.example.textdemo.service.FloatingWindowService;
@@ -23,8 +24,8 @@ import com.example.textdemo.ui.view.ScreenSelectionView;
 import com.example.textdemo.utils.common.CheckPermission;
 import com.example.textdemo.config.Constants;
 import com.example.textdemo.utils.common.PermissionManager;
-import com.example.textdemo.utils.io.FilePickerHelper;
 import com.example.textdemo.utils.common.GlobalStateManager;
+import com.example.textdemo.utils.io.FilePickerManager;
 import com.example.textdemo.utils.io.ScreenRecordingManager;
 
 import javax.inject.Inject;
@@ -40,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
 
     // 文件选择器辅助工具
-    private FilePickerHelper filePickerHelper;
+    private FilePickerManager filePickerManager;
 
     // 屏幕录制活动结果处理程序
     private ActivityResultLauncher<Intent> screenRecordLauncher;
@@ -65,7 +66,9 @@ public class MainActivity extends AppCompatActivity {
     // 服务管理
     @Inject
     ServiceManager serviceManager;
-
+    // 文本项数据访问对象
+    @Inject
+    TextItemDao textItemDao;
 
     /**
      * 创建活动时调用的方法
@@ -86,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         // 初始化文件选择器辅助工具
-        filePickerHelper = new FilePickerHelper(this);
+        filePickerManager = new FilePickerManager(this, textItemDao);
 
         // 初始化屏幕录制活动结果处理程序
         screenRecordLauncher = new ScreenRecordingManager(this).getScreenRecordLauncher();
@@ -131,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
         GlobalStateManager.setButton2ClickListener(button2ClickListener);
 
         // 导入文件按钮点击事件
-        binding.btnOpenFile.setOnClickListener(v -> filePickerHelper.openFile(this));
+        binding.btnOpenFile.setOnClickListener(v -> filePickerManager.openFile(this));
 
         // 录屏按钮点击事件
         binding.btnStartRecording.setOnClickListener(v -> startScreenRecordingInternal());

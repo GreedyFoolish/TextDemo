@@ -25,22 +25,16 @@ import java.util.List;
 import com.google.gson.Gson;
 import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.reflect.TypeToken;
 
-import javax.inject.Inject;
-
-import dagger.hilt.android.AndroidEntryPoint;
-
-@AndroidEntryPoint
-public class FilePickerManager extends AppCompatActivity { // 修改：继承 AppCompatActivity
+public class FilePickerManager {
 
     private final AppCompatActivity activity;
     private final ActivityResultLauncher<Intent> openFileLauncher;
+    private final TextItemDao textItemDao;
 
-    @Inject
-    TextItemDao textItemDao;
-
-    public FilePickerManager(AppCompatActivity activity) { // 修改此处
+    public FilePickerManager(AppCompatActivity activity, TextItemDao textItemDao) {
         this.activity = activity;
         this.openFileLauncher = registerOpenFileLauncher();
+        this.textItemDao = textItemDao;
     }
 
     private ActivityResultLauncher<Intent> registerOpenFileLauncher() {
