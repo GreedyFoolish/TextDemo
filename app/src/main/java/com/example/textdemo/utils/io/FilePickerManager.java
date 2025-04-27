@@ -28,17 +28,19 @@ import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.reflec
 public class FilePickerManager {
 
     private final AppCompatActivity activity;
+    private final Context context;
     private final ActivityResultLauncher<Intent> openFileLauncher;
     private final TextItemDao textItemDao;
 
-    public FilePickerManager(AppCompatActivity activity, TextItemDao textItemDao) {
+    public FilePickerManager(AppCompatActivity activity, Context context, TextItemDao textItemDao) {
         this.activity = activity;
+        this.context = context;
         this.openFileLauncher = registerOpenFileLauncher();
         this.textItemDao = textItemDao;
     }
 
     private ActivityResultLauncher<Intent> registerOpenFileLauncher() {
-        return activity.registerForActivityResult( // 此处不再报错
+        return activity.registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == Activity.RESULT_OK) {
@@ -75,8 +77,8 @@ public class FilePickerManager {
     /**
      * 打开文件选择器
      */
-    public void openFile(Context context) {
-        this.openFile(context, "*/*");
+    public void openFile() {
+        this.openFile("*/*");
     }
 
     /**
@@ -86,7 +88,7 @@ public class FilePickerManager {
      *                 如果传入 null 或无效的 MIME 类型，将不会启动文件选择器。
      */
     @SuppressLint("QueryPermissionsNeeded")
-    public void openFile(Context context, String mimeType) {
+    public void openFile(String mimeType) {
         // 校验 mimeType 是否合法
         if (mimeType == null || mimeType.isEmpty()) {
             Log.w("openFile", "无效的mimeType：null或空。将不会启动文件选择。");

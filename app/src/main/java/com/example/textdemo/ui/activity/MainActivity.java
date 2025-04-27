@@ -89,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         // 初始化文件选择器辅助工具
-        filePickerManager = new FilePickerManager(this, textItemDao);
+        filePickerManager = new FilePickerManager(this, contextProvider.getContext(), textItemDao);
 
         // 初始化屏幕录制活动结果处理程序
         screenRecordLauncher = new ScreenRecordingManager(this).getScreenRecordLauncher();
@@ -134,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
         GlobalStateManager.setButton2ClickListener(button2ClickListener);
 
         // 导入文件按钮点击事件
-        binding.btnOpenFile.setOnClickListener(v -> filePickerManager.openFile(this));
+        binding.btnOpenFile.setOnClickListener(v -> filePickerManager.openFile());
 
         // 录屏按钮点击事件
         binding.btnStartRecording.setOnClickListener(v -> startScreenRecordingInternal());
