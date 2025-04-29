@@ -64,7 +64,9 @@ public class FloatingWindowService extends Service {
                     // 匹配父容器的宽度
                     WindowManager.LayoutParams.MATCH_PARENT,
                     // 设置窗口高度为屏幕高度的一半
-                    windowHeight,
+                    // windowHeight,
+                    // 设置窗口高度为包裹内容
+                    WindowManager.LayoutParams.WRAP_CONTENT,
                     // 显示在应用顶部
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                     // 不获取焦点，不抢占事件

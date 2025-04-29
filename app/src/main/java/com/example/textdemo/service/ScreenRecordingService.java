@@ -32,7 +32,6 @@ import com.example.textdemo.R;
 import com.example.textdemo.config.Constants;
 import com.example.textdemo.data.dao.RectangleDao;
 import com.example.textdemo.data.dao.TextItemDao;
-import com.example.textdemo.data.database.RectanglesDatabaseHelper;
 import com.example.textdemo.ui.viewmodel.ScreenSelectionViewModel;
 import com.example.textdemo.utils.io.FileOperation;
 import com.googlecode.tesseract.android.TessBaseAPI;
@@ -87,132 +86,140 @@ public class ScreenRecordingService extends Service {
     @SuppressLint("WrongConstant")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // 创建通知渠道
-        createNotificationChannel();
+        try {
+            // 创建通知渠道
+            createNotificationChannel();
 
-        // 创建通知
-        Notification notification = createNotification();
+            // 创建通知
+            Notification notification = createNotification();
 
-        // 启动前台服务
-        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+            // 启动前台服务
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
 
-        // 获取媒体投影数据
-        Intent mediaProjectionData = intent.getParcelableExtra("mediaProjectionData");
-        /*
-         在 Android 13 (API 33) 及更高版本中，MediaProjection 的 Intent 结构有所变化。具体来说，MediaProjection 的 Bundle 键从
-         android.media.projection.extra.MEDIA_PROJECTION变为 android.media.projection.extra.EXTRA_MEDIA_PROJECTION。
-         */
-        if (mediaProjectionData == null) {
-            Log.e(TAG, "mediaProjectionData为空");
-            // 停止服务
-            stopSelf();
-            return START_NOT_STICKY;
-        }
+            // 获取媒体投影数据
+            Intent mediaProjectionData = intent.getParcelableExtra("mediaProjectionData");
 
-        // 初始化媒体投影管理器
-        mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-
-        // 获取媒体投影对象
-        mediaProjection = mediaProjectionManager.getMediaProjection(Activity.RESULT_OK, mediaProjectionData);
-
-        // 注册 MediaProjection 的回调
-        mediaProjection.registerCallback(new MediaProjection.Callback() {
-            @Override
-            public void onStop() {
-                super.onStop();
-                Log.e(TAG, "MediaProjection 停止服务");
-                stopMediaProjection();
-            }
-        }, null);
-
-        // 获取设备的显示指标（DisplayMetrics），包括屏幕的宽度、高度和密度等信息。
-        DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
-        // 获取屏幕的宽度（以像素为单位）
-        int width = displayMetrics.widthPixels;
-        // 获取屏幕的高度（以像素为单位）
-        int height = displayMetrics.heightPixels;
-        // 获取屏幕的密度（每英寸点数，DPI）
-        int dpi = displayMetrics.densityDpi;
-        // 获取状态栏高度
-        @SuppressLint("InternalInsetResource") int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
-        if (resourceId > 0) {
-            statusBarHeight = getResources().getDimensionPixelSize(resourceId);
-        }
-
-        // 复制 Tesseract OCR 数据
-        FileOperation.copyTessData(this, new FileOperation.CopyCallback() {
-            @Override
-            public void onCopyComplete(Context context) {
-                // 初始化 Tesseract OCR 引擎
-                tessBaseAPI = new TessBaseAPI();
-                // 获取 Tesseract OCR 数据路径
-                String tessDataPath = context.getFilesDir().getAbsolutePath();
-                // 指定 Tesseract OCR 引擎的语言
-                tessBaseAPI.init(tessDataPath, "chi_sim");
-                // 禁用图像反色处理。可以避免对某些不需要反色处理的图像进行额外操作，从而提高速度。
-                tessBaseAPI.setVariable("tessedit_do_invert", "0");
-                // 设置页面分割模式为PSM_SINGLE_BLOCK模式。PSM_SINGLE_BLOCK表示将图像视为单一的文字区域，适用于处理简单的文本块。
-                tessBaseAPI.setVariable("tessedit_pageseg_mode", "4");
-                // 设置OCR引擎模式为OEM_TESSERACT_LSTM_COMBINED模式。
-                // 此模式结合了传统的Tesseract引擎和LSTM（长短期记忆网络）引擎，提供更高的识别准确率。
-                tessBaseAPI.setVariable("tessedit_ocr_engine_mode", "3");
+            /*
+             在 Android 13 (API 33) 及更高版本中，MediaProjection 的 Intent 结构有所变化。具体来说，MediaProjection 的 Bundle 键从
+             android.media.projection.extra.MEDIA_PROJECTION变为 android.media.projection.extra.EXTRA_MEDIA_PROJECTION。
+             */
+            if (mediaProjectionData == null) {
+                Log.e(TAG, "mediaProjectionData为空");
+                stopSelf();
+                return START_NOT_STICKY;
             }
 
-            @Override
-            public void onCopyFailed(Exception e) {
-                Log.e(TAG, "Tesseract数据文件复制失败", e);
-            }
-        });
+            // 初始化媒体投影管理器
+            mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
 
-        // 手动创建ViewModel实例
-        viewModel = new ScreenSelectionViewModel(textItemDao, rectangleDao);
+            // 获取媒体投影对象
+            mediaProjection = mediaProjectionManager.getMediaProjection(Activity.RESULT_OK, mediaProjectionData);
 
-        // 从数据库中获取保存的矩形位置信息，如果没有找到，则使用默认的矩形位置信息
-        savedRect = Objects.requireNonNullElseGet(viewModel.getSavedRectangle(), () -> new Rect(100, 100, 400, 400));
-
-        // 初始化图像处理线程
-        imageHandlerThread = new HandlerThread("ImageHandlerThread");
-        // 启动图像处理线程
-        imageHandlerThread.start();
-        // 获取图像处理线程的 Handler
-        imageHandler = new Handler(imageHandlerThread.getLooper());
-        // 初始化 ImageReader
-        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
-        // 创建虚拟显示
-        virtualDisplay = mediaProjection.createVirtualDisplay("ScreenRecording",
-                width, height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader.getSurface(), null, null);
-        // 初始化 ImageProcessor
-        imageProcessor = new ImageProcessor(this, tessBaseAPI, savedRect, statusBarHeight, mediaProjection, virtualDisplay);
-
-        // 在类中添加一个成员变量来记录上一次处理的时间
-        final long[] lastProcessTime = {0};
-
-        // 设置 ImageReader 的监听器
-        imageReader.setOnImageAvailableListener(reader -> {
-            // 获取最新的图像
-            Image image = reader.acquireLatestImage();
-
-            if (image == null) {
-                Log.e(TAG, "图像为空");
-                return;
-            }
-            // 获取当前时间
-            long currentTime = System.currentTimeMillis();
-
-            // 检查是否达到了处理间隔时间
-            if (currentTime - lastProcessTime[0] >= Constants.PROCESS_INTERVAL_MS) {
-                lastProcessTime[0] = currentTime;
-                // 处理图像
-                imageProcessor.processImage(image);
-            } else {
-                // 如果不处理当前帧，则关闭图像以释放资源
-                if (image != null) {
-                    image.close();
+            // 注册 MediaProjection 的回调
+            mediaProjection.registerCallback(new MediaProjection.Callback() {
+                @Override
+                public void onStop() {
+                    super.onStop();
+                    Log.e(TAG, "MediaProjection 停止服务");
+                    stopMediaProjection();
                 }
-            }
-        }, imageHandler);
+            }, null);
 
+            // 获取设备的显示指标（DisplayMetrics），包括屏幕的宽度、高度和密度等信息。
+            DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
+            // 获取屏幕的宽度（以像素为单位）
+            int width = displayMetrics.widthPixels;
+            // 获取屏幕的高度（以像素为单位）
+            int height = displayMetrics.heightPixels;
+            // 获取屏幕的密度（每英寸点数，DPI）
+            int dpi = displayMetrics.densityDpi;
+            // 获取状态栏高度
+            @SuppressLint("InternalInsetResource") int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+            if (resourceId > 0) {
+                statusBarHeight = getResources().getDimensionPixelSize(resourceId);
+            }
+
+            // 复制 Tesseract OCR 数据
+            FileOperation.copyTessData(this, new FileOperation.CopyCallback() {
+                @Override
+                public void onCopyComplete(Context context) {
+                    // 初始化 Tesseract OCR 引擎
+                    tessBaseAPI = new TessBaseAPI();
+                    // 获取 Tesseract OCR 数据路径
+                    String tessDataPath = context.getFilesDir().getAbsolutePath();
+                    // 指定 Tesseract OCR 引擎的语言
+                    tessBaseAPI.init(tessDataPath, "chi_sim");
+                    // 禁用图像反色处理。可以避免对某些不需要反色处理的图像进行额外操作，从而提高速度。
+                    tessBaseAPI.setVariable("tessedit_do_invert", "0");
+                    // 设置页面分割模式为PSM_SINGLE_BLOCK模式。PSM_SINGLE_BLOCK表示将图像视为单一的文字区域，适用于处理简单的文本块。
+                    tessBaseAPI.setVariable("tessedit_pageseg_mode", "4");
+                    // 设置OCR引擎模式为OEM_TESSERACT_LSTM_COMBINED模式。
+                    // 此模式结合了传统的Tesseract引擎和LSTM（长短期记忆网络）引擎，提供更高的识别准确率。
+                    tessBaseAPI.setVariable("tessedit_ocr_engine_mode", "3");
+                }
+
+                @Override
+                public void onCopyFailed(Exception e) {
+                    Log.e(TAG, "Tesseract数据文件复制失败", e);
+                }
+            });
+
+            // 手动创建ViewModel实例
+            viewModel = new ScreenSelectionViewModel(textItemDao, rectangleDao);
+
+            // 从数据库中获取保存的矩形位置信息，如果没有找到，则使用默认的矩形位置信息
+            savedRect = Objects.requireNonNullElseGet(viewModel.getSavedRectangle(), () -> new Rect(100, 100, 400, 400));
+
+            // 初始化图像处理线程
+            imageHandlerThread = new HandlerThread("ImageHandlerThread");
+            // 启动图像处理线程
+            imageHandlerThread.start();
+            // 获取图像处理线程的 Handler
+            imageHandler = new Handler(imageHandlerThread.getLooper());
+            // 初始化 ImageReader
+            imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
+            // 创建虚拟显示
+            virtualDisplay = mediaProjection.createVirtualDisplay("ScreenRecording",
+                    width, height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader.getSurface(), null, null);
+            // 初始化 ImageProcessor
+            imageProcessor = new ImageProcessor(this, tessBaseAPI, savedRect, statusBarHeight, mediaProjection, virtualDisplay);
+
+            // 在类中添加一个成员变量来记录上一次处理的时间
+            final long[] lastProcessTime = {0};
+
+            // 设置 ImageReader 的监听器
+            imageReader.setOnImageAvailableListener(reader -> {
+                try {
+                    // 获取最新的图像
+                    Image image = reader.acquireLatestImage();
+
+                    if (image == null) {
+                        Log.e(TAG, "图像为空");
+                        return;
+                    }
+                    // 获取当前时间
+                    long currentTime = System.currentTimeMillis();
+
+                    // 检查是否达到了处理间隔时间
+                    if (currentTime - lastProcessTime[0] >= Constants.PROCESS_INTERVAL_MS) {
+                        lastProcessTime[0] = currentTime;
+                        // 处理图像
+                        imageProcessor.processImage(image);
+                    } else {
+                        // 如果不处理当前帧，则关闭图像以释放资源
+                        if (image != null) {
+                            image.close();
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "图像处理异常", e);
+                }
+            }, imageHandler);
+        } catch (Exception e) {
+            Log.e(TAG, "服务启动异常", e);
+            stopSelf();
+        }
         return START_NOT_STICKY;
     }
 
@@ -324,6 +331,10 @@ public class ScreenRecordingService extends Service {
         super.onDestroy();
         // 停止媒体投影和释放相关资源
         stopMediaProjection();
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager != null) {
+            manager.deleteNotificationChannel(CHANNEL_ID);
+        }
     }
 
     @Nullable
